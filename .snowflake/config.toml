@@ -1,8 +1,4 @@
-[connections.default]
-warehouse = "QUICKSTART_WH"
-role = "ACCOUNTADMIN"
-database = "QUICKSTART_COMMON"
-schema = "PUBLIC"
-account = "<INSERT YOUR ACCOUNT IDENTIFIER>"
-user = "<INSERT YOUR USERNAME>"
-password = "<INSERT YOUR PASSWORD>"
+[YMCUNCX-JA18147]
+account = "YMCUNCX-JA18147"
+user = "asingh92"
+authenticator = "snowflake"

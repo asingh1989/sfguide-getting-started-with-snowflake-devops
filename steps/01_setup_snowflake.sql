@@ -13,14 +13,14 @@ CREATE OR ALTER DATABASE QUICKSTART_COMMON;
 -- API integration is needed for GitHub integration
 CREATE OR REPLACE API INTEGRATION git_api_integration
   API_PROVIDER = git_https_api
-  API_ALLOWED_PREFIXES = ('https://github.com/<insert GitHub username>') -- INSERT YOUR GITHUB USERNAME HERE
+  API_ALLOWED_PREFIXES = ('https://github.com/asingh1989') -- INSERT YOUR GITHUB USERNAME HERE
   ENABLED = TRUE;
 
 
 -- Git repository object is similar to external stage
 CREATE OR REPLACE GIT REPOSITORY quickstart_common.public.quickstart_repo
   API_INTEGRATION = git_api_integration
-  ORIGIN = '<insert URL of forked GitHub repo>'; -- INSERT URL OF FORKED REPO HERE
+  ORIGIN = 'https://github.com/asingh1989/sfguide-getting-started-with-snowflake-devops'; -- INSERT URL OF FORKED REPO HERE
 
 
 CREATE OR ALTER DATABASE QUICKSTART_PROD;
@@ -31,7 +31,7 @@ CREATE OR REPLACE NOTIFICATION INTEGRATION email_integration
   TYPE=EMAIL
   ENABLED=TRUE;
 
-
+use DATABASE QUICKSTART_PROD;
 -- Database level objects
 CREATE OR ALTER SCHEMA bronze;
 CREATE OR ALTER SCHEMA silver;
@@ -45,3 +45,5 @@ CREATE OR ALTER STAGE bronze.raw;
 
 -- Copy file from GitHub to internal stage
 copy files into @bronze.raw from @quickstart_common.public.quickstart_repo/branches/main/data/airport_list.json;
+
+list @bronze.raw
