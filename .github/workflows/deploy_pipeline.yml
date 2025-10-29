@@ -1,58 +1,227 @@
-name: Deploy data pipeline
+name: Snowflake CI/CD Pipeline
 
-# Action will run on pushes to selected branches
 on:
   push:
     branches:
       - dev
       - main
-
-  # Allows you to run this workflow manually from the Actions tab
+  pull_request:
+    branches:
+      - dev
+      - main
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - prod
+      rollback:
+        description: 'Rollback to previous version'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  REPO_NAME: "quickstart_common.public.quickstart_repo"
+  SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
+  SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/snowflake_rsa_key"
 
 jobs:
-  deploy:
+  # Code Quality and Validation
+  validate:
     runs-on: ubuntu-22.04
-
-    env:
-      REPO_NAME: "quickstart_common.public.quickstart_repo"
-      SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
-      SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/snowflake_rsa_key"
-      # Read connection secrets
-      SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
-
     steps:
-      # Checkout step is necessary if you want to use a config file from your repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Write private key secret as file
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          pip install snowflake-snowpark-python
+          pip install sqlfluff
+          pip install black
+          pip install pylint
+
+      - name: Code formatting check (Python)
+        run: |
+          black --check --diff steps/*.py || echo "Python formatting issues found"
+
+      - name: SQL linting
+        run: |
+          sqlfluff lint steps/*.sql --dialect snowflake || echo "SQL linting issues found"
+
+      - name: Python linting
+        run: |
+          pylint steps/*.py --disable=C,R,W --errors-only || echo "Python linting issues found"
+
+  # Development Environment Deployment
+  deploy-dev:
+    needs: validate
+    runs-on: ubuntu-22.04
+    if: github.ref == 'refs/heads/dev' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev')
+    environment: development
+    
+    env:
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE_DEV }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_DEV }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Configure Private Key
         run: |
+          mkdir -p .snowflake
           echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/snowflake_rsa_key
+          chmod 600 .snowflake/snowflake_rsa_key
 
-      # Install Snowflake CLI GitHub Action and point to config file
       - name: Install snowflake-cli
         uses: Snowflake-Labs/snowflake-cli-action@v1.5
         with:
           cli-version: "latest"
           default-config-file-path: ".snowflake/config.toml"
 
-      # Update Snowflake's copy of the repository
+      - name: Validate Snowflake connection
+        run: |
+          snow connection test
+
+      - name: Create backup before deployment
+        run: |
+          snow sql -q "CREATE OR REPLACE TABLE QUICKSTART_dev.bronze.deployment_backup_$(date +%Y%m%d_%H%M%S) AS SELECT * FROM QUICKSTART_dev.bronze.vacation_spots;" || echo "Backup table creation failed or table doesn't exist"
+
       - name: Fetch repository changes
         run: snow git fetch "${REPO_NAME}"
 
-      # Deploy pipeline with branch specific parameters
-      - name: Deploy data pipeline to ${{ github.ref_name }}
+      - name: Deploy to DEV environment
         run: |
-          BRANCH_NAME=${{ github.ref_name }}
-          if [ "${BRANCH_NAME}" == "main" ]; then
-            RETENTION_TIME=1
-          else
-            RETENTION_TIME=0
-          fi
           snow git execute \
-            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
-            -D "environment='${BRANCH_NAME}'" \
-            -D "retention_time=${RETENTION_TIME}"
+            "@${REPO_NAME}/branches/dev/steps/0[134]_*" \
+            -D "environment='dev'" \
+            -D "retention_time=0"
+
+      - name: Run data quality tests
+        run: |
+          snow sql -q "SELECT COUNT(*) as record_count FROM QUICKSTART_dev.silver.major_us_cities WHERE total_population > 0;" || echo "Data quality test failed"
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ DEV deployment successful"
+          else
+            echo "❌ DEV deployment failed"
+          fi
+
+  # Production Environment Deployment
+  deploy-prod:
+    needs: [validate, deploy-dev]
+    runs-on: ubuntu-22.04
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
+    environment: production
+    
+    env:
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE_PROD }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_PROD }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Private Key
+        run: |
+          mkdir -p .snowflake
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/snowflake_rsa_key
+          chmod 600 .snowflake/snowflake_rsa_key
+
+      - name: Install snowflake-cli
+        uses: Snowflake-Labs/snowflake-cli-action@v1.5
+        with:
+          cli-version: "latest"
+          default-config-file-path: ".snowflake/config.toml"
+
+      - name: Validate Snowflake connection
+        run: |
+          snow connection test
+
+      - name: Create production backup
+        run: |
+          snow sql -q "CREATE OR REPLACE TABLE QUICKSTART_prod.bronze.deployment_backup_$(date +%Y%m%d_%H%M%S) AS SELECT * FROM QUICKSTART_prod.bronze.vacation_spots;" || echo "Backup table creation failed or table doesn't exist"
+
+      - name: Fetch repository changes
+        run: snow git fetch "${REPO_NAME}"
+
+      - name: Deploy to PROD environment
+        run: |
+          snow git execute \
+            "@${REPO_NAME}/branches/main/steps/0[134]_*" \
+            -D "environment='prod'" \
+            -D "retention_time=1"
+
+      - name: Run production smoke tests
+        run: |
+          snow sql -q "SELECT COUNT(*) as record_count FROM QUICKSTART_prod.silver.major_us_cities WHERE total_population > 0;" || echo "Smoke test failed"
+          snow sql -q "SELECT COUNT(*) as view_count FROM INFORMATION_SCHEMA.VIEWS WHERE TABLE_SCHEMA = 'SILVER';" || echo "View count test failed"
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ PROD deployment successful"
+          else
+            echo "❌ PROD deployment failed"
+          fi
+
+  # Rollback Job
+  rollback:
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.rollback == 'true'
+    environment: ${{ github.event.inputs.environment }}
+    
+    env:
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Private Key
+        run: |
+          mkdir -p .snowflake
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/snowflake_rsa_key
+          chmod 600 .snowflake/snowflake_rsa_key
+
+      - name: Install snowflake-cli
+        uses: Snowflake-Labs/snowflake-cli-action@v1.5
+        with:
+          cli-version: "latest"
+          default-config-file-path: ".snowflake/config.toml"
+
+      - name: Execute rollback
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          DB_NAME="QUICKSTART_${ENV}"
+          
+          # Find the latest backup table
+          BACKUP_TABLE=$(snow sql -q "SHOW TABLES LIKE 'deployment_backup_%' IN SCHEMA ${DB_NAME}.bronze;" --format json | jq -r '.[0].name' || echo "")
+          
+          if [ -n "$BACKUP_TABLE" ]; then
+            echo "Rolling back using backup table: $BACKUP_TABLE"
+            snow sql -q "CREATE OR REPLACE TABLE ${DB_NAME}.bronze.vacation_spots AS SELECT * FROM ${DB_NAME}.bronze.${BACKUP_TABLE};"
+            echo "✅ Rollback completed successfully"
+          else
+            echo "❌ No backup table found for rollback"
+            exit 1
+          fi

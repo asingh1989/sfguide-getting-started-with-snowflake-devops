@@ -187,6 +187,7 @@ pipeline = [
         and category_main in ('Aquarium', 'Zoo', 'Korean Restaurant')
         and id_country = 'country/USA'
         group by city.geo_id, city.geo_name
+        ---
         """
     }
     
