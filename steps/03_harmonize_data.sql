@@ -1,4 +1,9 @@
-use schema silver;
+-- Set environment variable (default to 'dev' if not provided)
+SET environment = COALESCE($environment, 'dev');
+
+-- Use dynamic database name based on environment (equivalent to: quickstart_{environment}.silver)
+USE DATABASE IDENTIFIER(CONCAT('QUICKSTART_', $environment));
+USE SCHEMA silver;
 -- Views to transform marketplace data in pipeline
 -- This file contains only SQL and can be executed with EXECUTE IMMEDIATE FROM
 
