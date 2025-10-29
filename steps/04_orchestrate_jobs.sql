@@ -20,7 +20,7 @@ create or alter table vacation_spots (
 ) data_retention_time_in_days = 1;
 
 
--- task to merge pipeline results into target table
+---- task to merge pipeline results into target table
 create or alter task vacation_spots_update
   schedule = '1440 minute'
   warehouse = 'quickstart_wh'
