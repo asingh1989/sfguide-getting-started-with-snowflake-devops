@@ -166,31 +166,29 @@ pipeline = [
         join weather_forecast weather on zip.zip_geo_name = weather.postal_code
         group by city.geo_id, city.geo_name, city.total_population
         """
-    }
+    },
     {
-        
         "name": "attractions",
-         "query"="""
+        "query": """
+        create or replace view attractions as
         select
-        city.geo_id,
-        city.geo_name,
-        count(case when category_main = 'Aquarium' THEN 1 END) aquarium_cnt,
-        count(case when category_main = 'Zoo' THEN 1 END) zoo_cnt,
-        count(case when category_main = 'Korean Restaurant' THEN 1 END) korean_restaurant_cnt,
+            city.geo_id,
+            city.geo_name,
+            count(case when category_main = 'Aquarium' THEN 1 END) aquarium_cnt,
+            count(case when category_main = 'Zoo' THEN 1 END) zoo_cnt,
+            count(case when category_main = 'Korean Restaurant' THEN 1 END) korean_restaurant_cnt
         from SNOWFLAKE_PUBLIC_DATA_FREE.PUBLIC_DATA_FREE.POINT_OF_INTEREST_INDEX poi
         join SNOWFLAKE_PUBLIC_DATA_FREE.PUBLIC_DATA_FREE.POINT_OF_INTEREST_ADDRESSES_RELATIONSHIPS poi_add 
-        on poi_add.poi_id = poi.poi_id
+            on poi_add.poi_id = poi.poi_id
         join SNOWFLAKE_PUBLIC_DATA_FREE.PUBLIC_DATA_FREE.US_ADDRESSES address 
-        on address.address_id = poi_add.address_id
+            on address.address_id = poi_add.address_id
         join major_us_cities city on city.geo_id = address.id_city
         where true
-        and category_main in ('Aquarium', 'Zoo', 'Korean Restaurant')
-        and id_country = 'country/USA'
+            and category_main in ('Aquarium', 'Zoo', 'Korean Restaurant')
+            and id_country = 'country/USA'
         group by city.geo_id, city.geo_name
-        ---
         """
     }
-    
 ]
 
 # Create views in Snowflake using the session
