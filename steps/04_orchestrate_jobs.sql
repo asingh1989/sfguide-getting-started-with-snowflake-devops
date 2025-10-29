@@ -31,7 +31,7 @@ create or alter task vacation_spots_update
     join silver.weather_joined_with_major_cities city on city.geo_name = flight.arrival_city
     -- STEP 5: INSERT CHANGES HERE
     join silver.attractions att on att.geo_name = city.geo_name
-  ) as harmonized_vacation_spots ON vacation_spots.city = harmonized_vacation_spots.arrival_city and vacation_spots.airport = harmonized_vacation_spots.arrival_airport
+  ) as harmonized_vacation_spots ON vacation_spots.city = harmonized_vacation_spots.arrival_city ---and vacation_spots.airport = harmonized_vacation_spots.arrival_airport
   WHEN MATCHED THEN
     UPDATE SET
         vacation_spots.co2_emissions_kg_per_person = harmonized_vacation_spots.co2_emissions_kg_per_person
