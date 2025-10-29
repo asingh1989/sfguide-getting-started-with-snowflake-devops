@@ -191,6 +191,6 @@ pipeline = [
     }
 ]
 
-# Create views in Snowflake using the session
+# Create views in Snowflake using the sessio
 for view in pipeline:
     session.sql(view["query"]).collect()
