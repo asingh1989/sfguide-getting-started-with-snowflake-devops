@@ -3,3 +3,4 @@ account = "YMCUNCX-JA18147"
 user = "asingh92"
 authenticator = "SNOWFLAKE_JWT"
 private_key_file = ".snowflake/rsa_key.pem"
+

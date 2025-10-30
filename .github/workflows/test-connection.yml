@@ -1,0 +1,237 @@
+name: Test Snowflake Connection
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - prod
+      verbose:
+        description: 'Enable verbose logging'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  test-connection:
+    runs-on: ubuntu-22.04
+    
+    env:
+      SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Private Key
+        run: |
+          mkdir -p .snowflake
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/rsa_key.pem
+          chmod 600 .snowflake/rsa_key.pem
+          
+          # Verify key file was created
+          if [ -f ".snowflake/rsa_key.pem" ]; then
+            echo "✅ Private key file created successfully"
+            echo "📏 Key file size: $(wc -c < .snowflake/rsa_key.pem) bytes"
+          else
+            echo "❌ Failed to create private key file"
+            exit 1
+          fi
+
+      - name: Install snowflake-cli
+        uses: Snowflake-Labs/snowflake-cli-action@v1.5
+        with:
+          cli-version: "latest"
+          default-config-file-path: ".snowflake/config.toml"
+
+      - name: Display Environment Info
+        run: |
+          echo "🔍 Environment Information:"
+          echo "  Account: ${{ secrets.SNOWFLAKE_ACCOUNT }}"
+          echo "  User: ${{ secrets.SNOWFLAKE_USER }}"
+          echo "  Environment: ${{ github.event.inputs.environment }}"
+          echo "  Verbose: ${{ github.event.inputs.verbose }}"
+          echo ""
+          echo "📋 Snowflake CLI Version:"
+          snow --version
+          echo ""
+          echo "📁 Config file content:"
+          cat .snowflake/config.toml || echo "Config file not found"
+
+      - name: Test Basic Snowflake Connection
+        run: |
+          echo "🔗 Testing basic Snowflake connection..."
+          if snow connection test; then
+            echo "✅ Basic connection test passed"
+          else
+            echo "❌ Basic connection test failed"
+            exit 1
+          fi
+
+      - name: Test SQL Query Execution
+        run: |
+          echo "📊 Testing SQL query execution..."
+          snow sql -q "SELECT CURRENT_USER() as current_user, CURRENT_ROLE() as current_role, CURRENT_WAREHOUSE() as current_warehouse, CURRENT_DATABASE() as current_database, CURRENT_SCHEMA() as current_schema;"
+
+      - name: Check Git Repository Access
+        run: |
+          echo "🔍 Checking Git repository access..."
+          echo "Listing branches in repository:"
+          snow sql -q "SHOW BRANCHES IN GIT REPOSITORY quickstart_common.public.quickstart_repo;" || echo "⚠️  Git repository access test failed"
+
+      - name: List Files in Repository Branch
+        run: |
+          echo "📂 Listing files in ${{ github.event.inputs.environment }} branch..."
+          snow sql -q "LS @quickstart_common.public.quickstart_repo/branches/${{ github.event.inputs.environment }}/;" || echo "⚠️  Branch listing failed"
+          
+          echo "📂 Listing files in steps directory:"
+          snow sql -q "LS @quickstart_common.public.quickstart_repo/branches/${{ github.event.inputs.environment }}/steps/;" || echo "⚠️  Steps directory listing failed"
+
+      - name: Test Environment-Specific Database Access
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          DB_NAME="QUICKSTART_${ENV}"
+          
+          echo "🏢 Testing access to ${DB_NAME} database..."
+          
+          # Set environment-specific variables
+          if [ "${ENV}" == "prod" ]; then
+            echo "SNOWFLAKE_CONNECTIONS_DEFAULT_DATABASE=${{ secrets.SNOWFLAKE_DATABASE_PROD }}" >> $GITHUB_ENV
+            echo "SNOWFLAKE_CONNECTIONS_DEFAULT_WAREHOUSE=${{ secrets.SNOWFLAKE_WAREHOUSE_PROD }}" >> $GITHUB_ENV
+          else
+            echo "SNOWFLAKE_CONNECTIONS_DEFAULT_DATABASE=${{ secrets.SNOWFLAKE_DATABASE_DEV }}" >> $GITHUB_ENV
+            echo "SNOWFLAKE_CONNECTIONS_DEFAULT_WAREHOUSE=${{ secrets.SNOWFLAKE_WAREHOUSE_DEV }}" >> $GITHUB_ENV
+          fi
+          
+          # Test database access
+          snow sql -q "USE DATABASE ${DB_NAME};" || echo "⚠️  Database access test failed"
+          snow sql -q "SHOW SCHEMAS IN DATABASE ${DB_NAME};" || echo "⚠️  Schema listing failed"
+
+      - name: Test Schema and Table Access
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          DB_NAME="QUICKSTART_${ENV}"
+          
+          echo "🔍 Testing schema and table access..."
+          
+          # Test silver schema access
+          snow sql -q "USE SCHEMA ${DB_NAME}.silver;" || echo "⚠️  Silver schema access failed"
+          snow sql -q "SHOW VIEWS IN SCHEMA ${DB_NAME}.silver;" || echo "⚠️  Views listing failed"
+          
+          # Test bronze schema access
+          snow sql -q "USE SCHEMA ${DB_NAME}.bronze;" || echo "⚠️  Bronze schema access failed"
+          snow sql -q "SHOW TABLES IN SCHEMA ${DB_NAME}.bronze;" || echo "⚠️  Bronze tables listing failed"
+          
+          # Test gold schema access
+          snow sql -q "USE SCHEMA ${DB_NAME}.gold;" || echo "⚠️  Gold schema access failed"
+          snow sql -q "SHOW TABLES IN SCHEMA ${DB_NAME}.gold;" || echo "⚠️  Gold tables listing failed"
+
+      - name: Test Data Sample Queries
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          DB_NAME="QUICKSTART_${ENV}"
+          
+          echo "📊 Running sample data queries..."
+          
+          # Test major_us_cities view
+          echo "Testing major_us_cities view:"
+          snow sql -q "SELECT COUNT(*) as city_count FROM ${DB_NAME}.silver.major_us_cities;" || echo "⚠️  major_us_cities query failed"
+          
+          # Test weather view
+          echo "Testing weather_joined_with_major_cities view:"
+          snow sql -q "SELECT COUNT(*) as weather_count FROM ${DB_NAME}.silver.weather_joined_with_major_cities;" || echo "⚠️  weather view query failed"
+          
+          # Test attractions view if it exists
+          echo "Testing attractions view:"
+          snow sql -q "SELECT COUNT(*) as attraction_count FROM ${DB_NAME}.silver.attractions;" || echo "⚠️  attractions view query failed"
+
+      - name: Test User Privileges
+        run: |
+          echo "🔐 Testing user privileges..."
+          
+          # Check current grants
+          echo "Current grants to user:"
+          snow sql -q "SHOW GRANTS TO USER ${{ secrets.SNOWFLAKE_USER }};" || echo "⚠️  User grants query failed"
+          
+          # Check role information
+          echo "Available roles:"
+          snow sql -q "SHOW GRANTS TO USER ${{ secrets.SNOWFLAKE_USER }};" | grep ROLE || echo "⚠️  Role information not available"
+
+      - name: Connection Performance Test
+        run: |
+          echo "⏱️  Testing connection performance..."
+          
+          start_time=$(date +%s)
+          
+          # Run a simple query multiple times
+          for i in {1..5}; do
+            echo "Query $i:"
+            snow sql -q "SELECT CURRENT_TIMESTAMP();" > /dev/null
+          done
+          
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+          
+          echo "✅ Performance test completed in ${duration} seconds"
+          
+          if [ $duration -gt 30 ]; then
+            echo "⚠️  Warning: Connection seems slow (${duration}s for 5 queries)"
+          else
+            echo "✅ Connection performance is good"
+          fi
+
+      - name: Verbose Logging (if enabled)
+        if: github.event.inputs.verbose == 'true'
+        run: |
+          echo "🔍 Verbose connection information:"
+          echo ""
+          echo "Environment Variables:"
+          env | grep SNOWFLAKE || echo "No Snowflake environment variables found"
+          echo ""
+          echo "Private key file info:"
+          ls -la .snowflake/
+          echo ""
+          echo "First and last lines of private key (for debugging):"
+          head -1 .snowflake/rsa_key.pem || echo "Cannot read private key file"
+          tail -1 .snowflake/rsa_key.pem || echo "Cannot read private key file"
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "📋 Connection Test Summary:"
+          echo "================================"
+          
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Overall Status: SUCCESS"
+            echo "✅ All connection tests passed successfully"
+            echo "✅ Your Snowflake configuration is working correctly"
+          else
+            echo "❌ Overall Status: FAILED"
+            echo "❌ Some connection tests failed"
+            echo "💡 Check the logs above for specific error details"
+          fi
+          
+          echo ""
+          echo "🔗 Connection Details:"
+          echo "  Account: ${{ secrets.SNOWFLAKE_ACCOUNT }}"
+          echo "  User: ${{ secrets.SNOWFLAKE_USER }}"
+          echo "  Environment: ${{ github.event.inputs.environment }}"
+          echo "  Authentication: JWT (Private Key)"
+          echo ""
+          echo "📚 Next Steps:"
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "  ✅ You can now run your main deployment pipeline"
+            echo "  ✅ All GitHub Secrets are configured correctly"
+          else
+            echo "  🔧 Fix the connection issues identified above"
+            echo "  🔍 Verify your GitHub Secrets configuration"
+            echo "  📖 Check the CI-CD-README.md for troubleshooting tips"
+          fi

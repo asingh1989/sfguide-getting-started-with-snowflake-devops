@@ -7,7 +7,7 @@ USE SCHEMA silver;
 -- Views to transform marketplace data in pipeline
 -- This file contains only SQL and can be executed with EXECUTE IMMEDIATE FROM
 
--- Flight emissions vie
+-- Flight emissions view
 CREATE OR REPLACE VIEW flight_emissions AS
 SELECT 
     departure_airport, 
