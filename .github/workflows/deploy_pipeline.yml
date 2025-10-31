@@ -68,8 +68,6 @@ jobs:
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/01_setup_snowflake.sql" \
             -D "environment='${BRANCH_NAME}'" \
             -D "retention_time=${RETENTION_TIME}" \
-            -D "database_name='${DB_NAME}'" \
-            -D "warehouse_name='QUICKSTART_WH'"
-            
+
 
           
