@@ -71,9 +71,5 @@ jobs:
             -D "database_name='${DB_NAME}'" \
             -D "warehouse_name='QUICKSTART_WH'"
             
-          # Deploy data harmonization views
-          echo "Creating data harmonization views..."
-          snow sql -q "USE WAREHOUSE QUICKSTART_WH;"
-          snow sql -q "USE DATABASE ${DB_NAME};"
-          snow sql -q "USE SCHEMA ${DB_NAME}.silver;"
+
           

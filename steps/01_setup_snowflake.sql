@@ -40,7 +40,7 @@ CREATE OR REPLACE NOTIFICATION INTEGRATION email_integration
 
 -- Now that we're using the correct database, create the schemas
 CREATE OR ALTER SCHEMA IDENTIFIER($DATABASE_NAME).bronze;
-CREATE OR ALTER SCHEMA silver; 
+CREATE OR ALTER SCHEMA IDENTIFIER($DATABASE_NAME).silver; 
 CREATE OR ALTER SCHEMA IDENTIFIER($DATABASE_NAME).gold;
 
 -- Explicitly set context before creating schema objects
@@ -49,10 +49,10 @@ USE DATABASE IDENTIFIER($DATABASE_NAME);
 USE SCHEMA IDENTIFIER($DATABASE_NAME).bronze;
 
 -- Schema level objects
-CREATE OR REPLACE FILE FORMAT IDENTIFIER($DATABASE_NAME).json_format TYPE = 'json';
+CREATE OR REPLACE FILE FORMAT IDENTIFIER($DATABASE_NAME).bronze.json_format TYPE = 'json';
 CREATE OR ALTER STAGE IDENTIFIER($DATABASE_NAME).bronze.raw;
 
 -- Copy file from GitHub to internal stage with full context
-COPY FILES INTO @IDENTIFIER($DATABASE_NAME).bronze.rawraw FROM @quickstart_common.public.quickstart_repo/branches/main/data/airport_list.json;
+COPY FILES INTO @IDENTIFIER($DATABASE_NAME).bronze.raw FROM @quickstart_common.public.quickstart_repo/branches/main/data/airport_list.json;
 
-LIST @raw;
+LIST @IDENTIFIER($DATABASE_NAME).raw;
