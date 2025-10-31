@@ -11,6 +11,8 @@ USE WAREHOUSE QUICKSTART_WH;
 -- Separate database for git repository
 CREATE OR ALTER DATABASE QUICKSTART_COMMON;
 
+use DATABASE QUICKSTART_COMMON;
+-- API integration is needed for GitHub integration
 -- API integration is needed for GitHub integratio
 CREATE OR REPLACE API INTEGRATION git_api_integration
   API_PROVIDER = git_https_api
