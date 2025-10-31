@@ -40,9 +40,9 @@ CREATE OR REPLACE NOTIFICATION INTEGRATION email_integration
 
 USE DATABASE QUICKSTART_{{environment}};
 -- Now that we're using the correct database, create the schemas
-CREATE OR ALTER SCHEMA IDENTIFIER($DATABASE_NAME).bronze;
-CREATE OR ALTER SCHEMA IDENTIFIER($DATABASE_NAME).silver; 
-CREATE OR ALTER SCHEMA IDENTIFIER($DATABASE_NAME).gold;
+CREATE OR ALTER SCHEMA bronze;
+CREATE OR ALTER SCHEMA silver; 
+CREATE OR ALTER SCHEMA gold;
 
 -- Explicitly set context before creating schema objects
 
