@@ -29,7 +29,7 @@ CREATE OR REPLACE GIT REPOSITORY quickstart_common.public.quickstart_repo
 -- Set parameters from workflow
 
 
--- Create environment-specific database using parameter first
+-- Create environment-specific database using parameter first=
 CREATE OR ALTER DATABASE QUICKSTART_{{environment}};
 
 
