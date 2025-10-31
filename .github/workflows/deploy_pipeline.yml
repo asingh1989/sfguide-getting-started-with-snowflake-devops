@@ -77,3 +77,4 @@ jobs:
             -D "retention_time=${RETENTION_TIME}"
 
           
+          echo "✅ Deployment completed successfully!"
