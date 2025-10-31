@@ -27,14 +27,10 @@ CREATE OR REPLACE GIT REPOSITORY quickstart_common.public.quickstart_repo
 
 
 -- Set parameters from workflow
-SET DATABASE_NAME = '{database_name}';
+
 
 -- Create environment-specific database using parameter first
 CREATE OR ALTER DATABASE QUICKSTART_{{environment}};
-
-
-
-
 
 
 -- To monitor data pipeline's completion
