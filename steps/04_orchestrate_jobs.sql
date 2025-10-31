@@ -1,6 +1,9 @@
 use role accountadmin;
 
-use schema quickstart_{{environment}}.gold;
+-- Set database context from parameter
+SET DATABASE_NAME = COALESCE($database_name, CONCAT('QUICKSTART_', $environment));
+USE DATABASE IDENTIFIER($DATABASE_NAME);
+use schema gold;
 
 
 -- declarative target table of pipeline

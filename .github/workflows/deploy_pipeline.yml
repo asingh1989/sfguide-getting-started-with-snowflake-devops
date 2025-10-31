@@ -30,7 +30,9 @@ jobs:
       # Write private key secret as file
       - name: Configure Private Key
         run: |
+          mkdir -p .snowflake
           echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/rsa_key.pem
+          chmod 600 .snowflake/rsa_key.pem
 
       # Install Snowflake CLI GitHub Action and point to config file
       - name: Install snowflake-cli
@@ -43,16 +45,44 @@ jobs:
       - name: Fetch repository changes
         run: snow git fetch "${REPO_NAME}"
 
+      # Set database context and deploy pipeline
+      - name: Set database context
+        run: |
+          BRANCH_NAME=${{ github.ref_name }}
+          if [ "${BRANCH_NAME}" == "main" ]; then
+            DB_NAME="QUICKSTART_PROD"
+          else
+            DB_NAME="QUICKSTART_DEV"
+          fi
+          snow sql -q "USE DATABASE ${DB_NAME};"
+          
       # Deploy pipeline with branch specific parameters
       - name: Deploy data pipeline to ${{ github.ref_name }}
         run: |
           BRANCH_NAME=${{ github.ref_name }}
           if [ "${BRANCH_NAME}" == "main" ]; then
             RETENTION_TIME=1
+            DB_NAME="QUICKSTART_PROD"
           else
             RETENTION_TIME=0
+            DB_NAME="QUICKSTART_DEV"
           fi
+          
+          # Set database context within the git execute session
           snow git execute \
-            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
+            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/01_setup_snowflake.sql" \
             -D "environment='${BRANCH_NAME}'" \
-            -D "retention_time=${RETENTION_TIME}"
+            -D "retention_time=${RETENTION_TIME}" \
+            -D "database_name='${DB_NAME}'"
+            
+          snow git execute \
+            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/03_harmonize_data.sql" \
+            -D "environment='${BRANCH_NAME}'" \
+            -D "retention_time=${RETENTION_TIME}" \
+            -D "database_name='${DB_NAME}'"
+            
+          snow git execute \
+            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/04_orchestrate_jobs.sql" \
+            -D "environment='${BRANCH_NAME}'" \
+            -D "retention_time=${RETENTION_TIME}" \
+            -D "database_name='${DB_NAME}'"

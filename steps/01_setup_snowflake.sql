@@ -5,6 +5,10 @@ CREATE OR ALTER WAREHOUSE QUICKSTART_WH
   AUTO_SUSPEND = 300 
   AUTO_RESUME= TRUE;
 
+-- Set database context from parameter
+SET DATABASE_NAME = '{{database_name}}';
+USE DATABASE IDENTIFIER($DATABASE_NAME);
+
 
 -- Separate database for git repository
 CREATE OR ALTER DATABASE QUICKSTART_COMMON;
