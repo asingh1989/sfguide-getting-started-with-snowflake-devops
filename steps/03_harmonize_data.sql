@@ -8,12 +8,12 @@ SET WAREHOUSE_NAME = '{warehouse_name}';
 -- Ensure proper warehouse and database context
 USE WAREHOUSE IDENTIFIER($WAREHOUSE_NAME);
 USE DATABASE IDENTIFIER($DATABASE_NAME);
-USE SCHEMA silver;
+USE SCHEMA IDENTIFIER($DATABASE_NAME).silver;
 -- Views to transform marketplace data in pipeline
 -- This file contains only SQL and can be executed with EXECUTE IMMEDIATE FROM
 
 -- Flight emissions view
-CREATE OR REPLACE VIEW flight_emissions AS
+CREATE OR REPLACE VIEW IDENTIFIER($DATABASE_NAME).flight_emissions AS
 SELECT 
     departure_airport, 
     arrival_airport, 
@@ -23,7 +23,7 @@ WHERE seats != 0 AND estimated_co2_total_tonnes IS NOT NULL
 GROUP BY departure_airport, arrival_airport;
 
 -- Flight punctuality view
-CREATE OR REPLACE VIEW flight_punctuality AS
+CREATE OR REPLACE VIEW IDENTIFIER($DATABASE_NAME).flight_punctuality AS
 SELECT 
     departure_iata_airport_code, 
     arrival_iata_airport_code, 
@@ -35,7 +35,7 @@ WHERE arrival_actual_ingate_timeliness IS NOT NULL
 GROUP BY departure_iata_airport_code, arrival_iata_airport_code;
 
 -- Flights from home view
-CREATE OR REPLACE VIEW flights_from_home AS
+CREATE OR REPLACE VIEW IDENTIFIER($DATABASE_NAME).flights_from_home AS
 SELECT 
     fe.departure_airport, 
     fe.arrival_airport, 
@@ -54,7 +54,7 @@ WHERE fe.departure_airport = (
         (FILE_FORMAT => bronze.json_format));
 
 -- Weather forecast view
-CREATE OR REPLACE VIEW weather_forecast AS
+CREATE OR REPLACE VIEW IDENTIFIER($DATABASE_NAME).weather_forecast AS
 SELECT 
     postal_code, 
     AVG(avg_temperature_air_2m_f) avg_temperature_air_f, 
@@ -66,7 +66,7 @@ WHERE country = 'US'
 GROUP BY postal_code;
 
 -- Major US cities view
-CREATE OR REPLACE VIEW major_us_cities AS
+CREATE OR REPLACE VIEW IDENTIFIER($DATABASE_NAME).major_us_cities AS
 SELECT 
     geo.geo_id, 
     geo.geo_name, 
@@ -86,7 +86,7 @@ GROUP BY geo.geo_id, geo.geo_name
 ORDER BY total_population DESC;
 
 -- Zip codes in city view
-CREATE OR REPLACE VIEW zip_codes_in_city AS
+CREATE OR REPLACE VIEW IDENTIFIER($DATABASE_NAME).zip_codes_in_city AS
 SELECT 
     city.geo_id city_geo_id, 
     city.geo_name city_geo_name, 
@@ -102,7 +102,7 @@ WHERE TRUE
 ORDER BY city_geo_id;
 
 -- Weather joined with major cities view
-CREATE OR REPLACE VIEW weather_joined_with_major_cities AS
+CREATE OR REPLACE VIEW IDENTIFIER($DATABASE_NAME).weather_joined_with_major_cities AS
 SELECT 
     city.geo_id, 
     city.geo_name, 
@@ -117,7 +117,7 @@ JOIN weather_forecast weather ON zip.zip_geo_name = weather.postal_code
 GROUP BY city.geo_id, city.geo_name, city.total_population;
 
 -- Attractions view
-CREATE OR REPLACE VIEW attractions AS
+CREATE OR REPLACE VIEW IDENTIFIER($DATABASE_NAME).attractions AS
 SELECT
     city.geo_id,
     city.geo_name,
