@@ -1,7 +1,7 @@
 use role accountadmin;
 
 -- Set database context from parameter
-SET DATABASE_NAME = COALESCE($database_name, CONCAT('QUICKSTART_', $environment));
+SET DATABASE_NAME = COALESCE('{database_name}', CONCAT('QUICKSTART_', '{environment}'));
 USE DATABASE IDENTIFIER($DATABASE_NAME);
 use schema gold;
 
@@ -20,7 +20,7 @@ create or alter table vacation_spots (
   , aquarium_cnt int
 , zoo_cnt int
 , korean_restaurant_cnt int
-) data_retention_time_in_days = {{retention_time}};
+) data_retention_time_in_days = {retention_time};
 
 
 ----new task to merge pipeline results into target table

@@ -1,8 +1,8 @@
 -- Set environment variable (default to 'dev' if not provided)
-SET environment = COALESCE($environment, 'dev');
+SET environment = COALESCE('{environment}', 'dev');
 
 -- Set database context from parameter
-SET DATABASE_NAME = COALESCE($database_name, CONCAT('QUICKSTART_', $environment));
+SET DATABASE_NAME = COALESCE('{database_name}', CONCAT('QUICKSTART_', '{environment}'));
 USE DATABASE IDENTIFIER($DATABASE_NAME);
 USE SCHEMA silver;
 -- Views to transform marketplace data in pipeline
