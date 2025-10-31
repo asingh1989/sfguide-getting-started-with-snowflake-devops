@@ -63,14 +63,43 @@ jobs:
           echo "Retention time: ${RETENTION_TIME}"
           
           # Deploy setup first (creates databases and schemas)
-          snow git execute \
-            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/01_setup_snowflake.sql" \
-            -D "environment='${BRANCH_NAME}'" \
-            -D "retention_time=${RETENTION_TIME}" \
-            -D "database_name='${DB_NAME}'" \
-            -D "warehouse_name='QUICKSTART_WH'"
+          # First establish warehouse context
+          snow sql -q "USE ROLE ACCOUNTADMIN;"
+          snow sql -q "CREATE OR ALTER WAREHOUSE QUICKSTART_WH WAREHOUSE_SIZE = XSMALL AUTO_SUSPEND = 300 AUTO_RESUME = TRUE;"
+          snow sql -q "USE WAREHOUSE QUICKSTART_WH;"
+          
+          # Create common database and git repository
+          snow sql -q "CREATE OR ALTER DATABASE QUICKSTART_COMMON;"
+          snow sql -q "CREATE OR REPLACE API INTEGRATION git_api_integration API_PROVIDER = git_https_api API_ALLOWED_PREFIXES = ('https://github.com/asingh1989') ENABLED = TRUE;"
+          snow sql -q "CREATE OR REPLACE GIT REPOSITORY quickstart_common.public.quickstart_repo API_INTEGRATION = git_api_integration ORIGIN = 'https://github.com/asingh1989/sfguide-getting-started-with-snowflake-devops';"
+          
+          # Create environment database and establish context
+          snow sql -q "CREATE OR ALTER DATABASE ${DB_NAME};"
+          snow sql -q "USE DATABASE ${DB_NAME};"
+          
+          # Create schemas
+          snow sql -q "CREATE OR ALTER SCHEMA bronze;"
+          snow sql -q "CREATE OR ALTER SCHEMA silver;"
+          snow sql -q "CREATE OR ALTER SCHEMA gold;"
+          
+          # Create bronze schema objects
+          snow sql -q "USE SCHEMA bronze;"
+          snow sql -q "CREATE OR REPLACE FILE FORMAT json_format TYPE = 'json';"
+          snow sql -q "CREATE OR ALTER STAGE raw;"
+          
+          # Copy data files
+          snow sql -q "COPY FILES INTO @raw FROM @quickstart_common.public.quickstart_repo/branches/main/data/airport_list.json;" || echo "File copy failed, continuing..."
+          
+          # Create email integration
+          snow sql -q "CREATE OR REPLACE NOTIFICATION INTEGRATION email_integration TYPE=EMAIL ENABLED=TRUE;"
             
           # Deploy data harmonization views
+          echo "Creating data harmonization views..."
+          snow sql -q "USE WAREHOUSE QUICKSTART_WH;"
+          snow sql -q "USE DATABASE ${DB_NAME};"
+          snow sql -q "USE SCHEMA silver;"
+          
+          # Execute the harmonization SQL file directly
           snow git execute \
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/03_harmonize_data.sql" \
             -D "environment='${BRANCH_NAME}'" \
@@ -79,6 +108,12 @@ jobs:
             -D "warehouse_name='QUICKSTART_WH'"
             
           # Deploy orchestration tasks
+          echo "Creating orchestration tasks..."
+          snow sql -q "USE WAREHOUSE QUICKSTART_WH;"
+          snow sql -q "USE DATABASE ${DB_NAME};"
+          snow sql -q "USE SCHEMA gold;"
+          
+          # Execute the orchestration SQL file directly
           snow git execute \
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/04_orchestrate_jobs.sql" \
             -D "environment='${BRANCH_NAME}'" \
