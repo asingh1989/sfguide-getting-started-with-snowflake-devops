@@ -94,7 +94,7 @@ jobs:
           echo "Creating data harmonization views..."
           snow sql -q "USE WAREHOUSE QUICKSTART_WH;"
           snow sql -q "USE DATABASE ${DB_NAME};"
-          snow sql -q "USE SCHEMA silver;"
+          snow sql -q "USE SCHEMA ${DB_NAME}.silver;"
           
           # Execute the harmonization SQL file directly
           snow git execute \
@@ -108,7 +108,7 @@ jobs:
           echo "Creating orchestration tasks..."
           snow sql -q "USE WAREHOUSE QUICKSTART_WH;"
           snow sql -q "USE DATABASE ${DB_NAME};"
-          snow sql -q "USE SCHEMA gold;"
+          snow sql -q "USE SCHEMA ${DB_NAME}.gold;"
           
           # Execute the orchestration SQL file directly
           snow git execute \
