@@ -1,9 +1,13 @@
-use role accountadmin;
+USE ROLE ACCOUNTADMIN;
 
--- Set database context from parameter
+-- Set parameters from workflow
 SET DATABASE_NAME = COALESCE('{database_name}', CONCAT('QUICKSTART_', '{environment}'));
+SET WAREHOUSE_NAME = '{warehouse_name}';
+
+-- Ensure proper warehouse and database context
+USE WAREHOUSE IDENTIFIER($WAREHOUSE_NAME);
 USE DATABASE IDENTIFIER($DATABASE_NAME);
-use schema gold;
+USE SCHEMA gold;
 
 
 -- declarative target table of pipeline

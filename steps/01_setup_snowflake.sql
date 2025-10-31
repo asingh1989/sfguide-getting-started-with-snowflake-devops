@@ -22,13 +22,16 @@ CREATE OR REPLACE GIT REPOSITORY quickstart_common.public.quickstart_repo
   API_INTEGRATION = git_api_integration
   ORIGIN = 'https://github.com/asingh1989/sfguide-getting-started-with-snowflake-devops'; -- INSERT URL OF FORKED REPO HERE
 
--- Create environment-specific database using parameter first
+-- Set parameters from workflow
 SET DATABASE_NAME = '{database_name}';
+SET WAREHOUSE_NAME = '{warehouse_name}';
+
+-- Create environment-specific database using parameter first
 CREATE OR ALTER DATABASE IDENTIFIER($DATABASE_NAME);
 
--- Now use the database we just created
+-- Ensure we're using the correct warehouse and database context
+USE WAREHOUSE IDENTIFIER($WAREHOUSE_NAME);
 USE DATABASE IDENTIFIER($DATABASE_NAME);
-
 
 -- To monitor data pipeline's completion
 CREATE OR REPLACE NOTIFICATION INTEGRATION email_integration
@@ -37,14 +40,19 @@ CREATE OR REPLACE NOTIFICATION INTEGRATION email_integration
 
 -- Now that we're using the correct database, create the schemas
 CREATE OR ALTER SCHEMA bronze;
-CREATE OR ALTER SCHEMA silver;
+CREATE OR ALTER SCHEMA silver; 
 CREATE OR ALTER SCHEMA gold;
 
--- Schema level objects (explicitly specify the database context)
-CREATE OR REPLACE FILE FORMAT bronze.json_format TYPE = 'json';
-CREATE OR ALTER STAGE bronze.raw;
+-- Explicitly set context before creating schema objects
+USE WAREHOUSE IDENTIFIER($WAREHOUSE_NAME);
+USE DATABASE IDENTIFIER($DATABASE_NAME);
+USE SCHEMA bronze;
 
--- Copy file from GitHub to internal stage
-COPY FILES INTO @bronze.raw FROM @quickstart_common.public.quickstart_repo/branches/main/data/airport_list.json;
+-- Schema level objects
+CREATE OR REPLACE FILE FORMAT json_format TYPE = 'json';
+CREATE OR ALTER STAGE raw;
 
-LIST @bronze.raw;
+-- Copy file from GitHub to internal stage with full context
+COPY FILES INTO @raw FROM @quickstart_common.public.quickstart_repo/branches/main/data/airport_list.json;
+
+LIST @raw;

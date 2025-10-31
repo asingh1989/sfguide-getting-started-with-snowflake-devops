@@ -67,18 +67,21 @@ jobs:
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/01_setup_snowflake.sql" \
             -D "environment='${BRANCH_NAME}'" \
             -D "retention_time=${RETENTION_TIME}" \
-            -D "database_name='${DB_NAME}'"
+            -D "database_name='${DB_NAME}'" \
+            -D "warehouse_name='QUICKSTART_WH'"
             
           # Deploy data harmonization views
           snow git execute \
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/03_harmonize_data.sql" \
             -D "environment='${BRANCH_NAME}'" \
             -D "retention_time=${RETENTION_TIME}" \
-            -D "database_name='${DB_NAME}'"
+            -D "database_name='${DB_NAME}'" \
+            -D "warehouse_name='QUICKSTART_WH'"
             
           # Deploy orchestration tasks
           snow git execute \
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/04_orchestrate_jobs.sql" \
             -D "environment='${BRANCH_NAME}'" \
             -D "retention_time=${RETENTION_TIME}" \
-            -D "database_name='${DB_NAME}'"
+            -D "database_name='${DB_NAME}'" \
+            -D "warehouse_name='QUICKSTART_WH'"
