@@ -53,7 +53,7 @@ CREATE OR ALTER STAGE bronze.raw;
 -- Copy file from GitHub to internal stage with full context
 COPY FILES INTO @bronze.raw FROM @quickstart_common.public.quickstart_repo/branches/main/data/airport_list.json;
 
-create or ALTER TABLE QUICKSTART_PROD.SILVER.AIRPORTS (
+create or ALTER TABLE QUICKSTART_{{environment}}.SILVER.AIRPORTS (
 	CITY_NAME VARCHAR(500),
 	IATA_CODE VARCHAR(500)
 );
