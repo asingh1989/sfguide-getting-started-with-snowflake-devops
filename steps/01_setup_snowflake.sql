@@ -17,7 +17,7 @@ CREATE OR REPLACE API INTEGRATION git_api_integration
   API_ALLOWED_PREFIXES = ('https://github.com/asingh1989') -- INSERT YOUR GITHUB USERNAME HERE
   ENABLED = TRUE;
 
--- Git repository object is similar to external stage
+-- Git repository object is similar to external stag
 CREATE OR REPLACE GIT REPOSITORY quickstart_common.public.quickstart_repo
   API_INTEGRATION = git_api_integration
   ORIGIN = 'https://github.com/asingh1989/sfguide-getting-started-with-snowflake-devops'; -- INSERT URL OF FORKED REPO HERE
