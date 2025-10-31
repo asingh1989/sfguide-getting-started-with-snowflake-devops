@@ -96,7 +96,7 @@ jobs:
           snow sql -q "USE DATABASE ${DB_NAME};"
           snow sql -q "USE SCHEMA ${DB_NAME}.silver;"
           
-          # Execute the harmonization SQL file directly
+          # Execute the harmonization SQL file directl
           snow git execute \
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/03_harmonize_data.sql" \
             -D "environment='${BRANCH_NAME}'" \
