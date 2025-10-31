@@ -17,7 +17,7 @@ jobs:
     env:
       REPO_NAME: "quickstart_common.public.quickstart_repo"
       SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
-      SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/snowflake_rsa_key"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
       # Read connection secrets
       SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
       SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
@@ -30,7 +30,9 @@ jobs:
       # Write private key secret as file
       - name: Configure Private Key
         run: |
-          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/snowflake_rsa_key
+          mkdir -p .snowflake
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/rsa_key.pem
+          chmod 600 .snowflake/rsa_key.pem
 
       # Install Snowflake CLI GitHub Action and point to config file
       - name: Install snowflake-cli
@@ -52,7 +54,33 @@ jobs:
           else
             RETENTION_TIME=0
           fi
+          
+          # Use branch name for database naming (QUICKSTART_main or QUICKSTART_dev)
+          DB_NAME="QUICKSTART_${BRANCH_NAME}"
+          
+          echo "Deploying to environment: ${BRANCH_NAME}"
+          echo "Database name: ${DB_NAME}"
+          echo "Retention time: ${RETENTION_TIME}"
+          
+          # Deploy setup first (creates databases and schemas)
+          echo "Running setup from 01_setup_snowflake.sql..."
           snow git execute \
-            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
+            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/01_setup_snowflake.sql" \
             -D "environment='${BRANCH_NAME}'" \
             -D "retention_time=${RETENTION_TIME}"
+          
+          # Deploy data harmonization views
+          echo "Running harmonization from 03_harmonize_data.sql..."
+          snow git execute \
+            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/03_harmonize_data.sql" \
+            -D "environment='${BRANCH_NAME}'" \
+            -D "retention_time=${RETENTION_TIME}"
+          
+          # Deploy orchestration tasks
+          echo "Running orchestration from 04_orchestrate_jobs.sql..."
+          snow git execute \
+            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/04_orchestrate_jobs.sql" \
+            -D "environment='${BRANCH_NAME}'" \
+            -D "retention_time=${RETENTION_TIME}"
+          
+          echo "✅ Deployment completed successfully!"

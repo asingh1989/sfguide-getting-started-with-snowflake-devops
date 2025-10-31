@@ -1,4 +1,10 @@
-[YMCUNCX-JA18147]
+[connections.default]
+warehouse = "QUICKSTART_WH"
+role = "ACCOUNTADMIN"
+database = "QUICKSTART_COMMON"
+schema = "PUBLIC"
 account = "YMCUNCX-JA18147"
 user = "asingh92"
-authenticator = "snowflake"
+authenticator = "SNOWFLAKE_JWT"
+private_key_file = ".snowflake/rsa_key.pem"
+
