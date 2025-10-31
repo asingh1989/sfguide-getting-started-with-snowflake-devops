@@ -1,4 +1,8 @@
 [connections.default]
+warehouse = "QUICKSTART_WH"
+role = "ACCOUNTADMIN"
+database = "QUICKSTART_COMMON"
+schema = "PUBLIC"
 account = "YMCUNCX-JA18147"
 user = "asingh92"
 authenticator = "SNOWFLAKE_JWT"
