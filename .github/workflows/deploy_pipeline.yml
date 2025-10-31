@@ -45,42 +45,38 @@ jobs:
       - name: Fetch repository changes
         run: snow git fetch "${REPO_NAME}"
 
-      # Set database context and deploy pipeline
-      - name: Set database context
-        run: |
-          BRANCH_NAME=${{ github.ref_name }}
-          if [ "${BRANCH_NAME}" == "main" ]; then
-            DB_NAME="QUICKSTART_PROD"
-          else
-            DB_NAME="QUICKSTART_DEV"
-          fi
-          snow sql -q "USE DATABASE ${DB_NAME};"
-          
       # Deploy pipeline with branch specific parameters
       - name: Deploy data pipeline to ${{ github.ref_name }}
         run: |
           BRANCH_NAME=${{ github.ref_name }}
           if [ "${BRANCH_NAME}" == "main" ]; then
             RETENTION_TIME=1
-            DB_NAME="QUICKSTART_PROD"
           else
             RETENTION_TIME=0
-            DB_NAME="QUICKSTART_DEV"
           fi
           
-          # Set database context within the git execute session
+          # Use branch name for database naming (QUICKSTART_main or QUICKSTART_dev)
+          DB_NAME="QUICKSTART_${BRANCH_NAME}"
+          
+          echo "Deploying to environment: ${BRANCH_NAME}"
+          echo "Database name: ${DB_NAME}"
+          echo "Retention time: ${RETENTION_TIME}"
+          
+          # Deploy setup first (creates databases and schemas)
           snow git execute \
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/01_setup_snowflake.sql" \
             -D "environment='${BRANCH_NAME}'" \
             -D "retention_time=${RETENTION_TIME}" \
             -D "database_name='${DB_NAME}'"
             
+          # Deploy data harmonization views
           snow git execute \
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/03_harmonize_data.sql" \
             -D "environment='${BRANCH_NAME}'" \
             -D "retention_time=${RETENTION_TIME}" \
             -D "database_name='${DB_NAME}'"
             
+          # Deploy orchestration tasks
           snow git execute \
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/04_orchestrate_jobs.sql" \
             -D "environment='${BRANCH_NAME}'" \

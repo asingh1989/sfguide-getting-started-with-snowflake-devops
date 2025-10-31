@@ -27,7 +27,8 @@ CREATE OR REPLACE GIT REPOSITORY quickstart_common.public.quickstart_repo
   ORIGIN = 'https://github.com/asingh1989/sfguide-getting-started-with-snowflake-devops'; -- INSERT URL OF FORKED REPO HERE
 
 
-CREATE OR ALTER DATABASE QUICKSTART_{{environment}};
+-- Create environment-specific database using parameter
+CREATE OR ALTER DATABASE IDENTIFIER($DATABASE_NAME);
 
 
 -- To monitor data pipeline's completion
