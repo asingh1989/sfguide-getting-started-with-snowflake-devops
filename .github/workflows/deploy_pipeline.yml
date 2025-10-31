@@ -69,12 +69,4 @@ jobs:
             -D "environment='${BRANCH_NAME}'" \
             -D "retention_time=${RETENTION_TIME}" \
 		      
-          # Deploy data harmonization views
-          echo "Running harmonization from 03_harmonize_data.sql..."
-          snow git execute \
-            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/03_harmonize_data.sql" \
-            -D "environment='${BRANCH_NAME}'" \
-            -D "retention_time=${RETENTION_TIME}"
-
-          
           echo "✅ Deployment completed successfully!"
