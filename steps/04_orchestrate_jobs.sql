@@ -1,13 +1,8 @@
 USE ROLE ACCOUNTADMIN;
 
 -- Set parameters from workflow
-SET DATABASE_NAME = COALESCE('{database_name}', CONCAT('QUICKSTART_', '{environment}'));
-SET WAREHOUSE_NAME = '{warehouse_name}';
 
--- Ensure proper warehouse and database context
-USE WAREHOUSE IDENTIFIER($WAREHOUSE_NAME);
-USE DATABASE IDENTIFIER($DATABASE_NAME);
-USE SCHEMA gold;
+USE SCHEMA quickstart_{{environment}}.gold;
 
 
 -- declarative target table of pipeline
@@ -24,7 +19,7 @@ create or alter table vacation_spots (
   , aquarium_cnt int
 , zoo_cnt int
 , korean_restaurant_cnt int
-) data_retention_time_in_days = {retention_time};
+) data_retention_time_in_days = {{retention_time}};
 
 
 ----new task to merge pipeline results into target table
