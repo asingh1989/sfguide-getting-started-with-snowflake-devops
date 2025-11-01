@@ -55,7 +55,7 @@ jobs:
             RETENTION_TIME=0
           fi
           
-          # Use branch name for  database naming (QUICKSTART_main or QUICKSTART_dev)
+          # Use branch name for   database naming (QUICKSTART_main or QUICKSTART_dev)
           DB_NAME="QUICKSTART_${BRANCH_NAME}"
           
           echo "Deploying to environment: ${BRANCH_NAME}"
