@@ -79,7 +79,7 @@ jobs:
           # Deploy orchestration tasks
           echo "Running orchestration from 04_orchestrate_jobs.sql..."
           snow git execute \
-            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/04_orchestrate_jobs.sql" \
+            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/09_harmonize_data.py" \
             -D "environment='${BRANCH_NAME}'" \
             -D "retention_time=${RETENTION_TIME}"
           
