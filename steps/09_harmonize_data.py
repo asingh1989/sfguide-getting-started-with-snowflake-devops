@@ -3,8 +3,6 @@
 
 import os
 from snowflake.snowpark import Session
-from snowflake.snowpark.functions import udf
-from snowflake.snowpark.types import StringType
 
 
 
