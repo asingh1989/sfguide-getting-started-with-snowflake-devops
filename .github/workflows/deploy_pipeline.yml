@@ -51,14 +51,16 @@ jobs:
           BRANCH_NAME=${{ github.ref_name }}
           if [ "${BRANCH_NAME}" == "main" ]; then
             RETENTION_TIME=1
+            environment=prod
           else
             RETENTION_TIME=0
+            environment=dev
           fi
           
-          # Use branch name for   database naming (QUICKSTART_main or QUICKSTART_dev)
-          DB_NAME="QUICKSTART_${BRANCH_NAME}"
+          # Use branch name for   database naming (QUICKSTART_prod or QUICKSTART_dev)
+          DB_NAME="QUICKSTART_${environment}"
           
-          echo "Deploying to environment: ${BRANCH_NAME}"
+          echo "Deploying to environment: ${environment}"
           echo "Database name: ${DB_NAME}"
           echo "Retention time: ${RETENTION_TIME}"
           
@@ -66,7 +68,7 @@ jobs:
           echo "Running pipeline steps: 01_setup, 03_harmonize, 04_orchestrate..."
           snow git execute \
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
-            -D "environment='${BRANCH_NAME}'" \
+            -D "environment='${environment}'" \
             -D "retention_time=${RETENTION_TIME}"
           
           # Individual SQL file executions (commented out - using wildcard pattern above instead)
@@ -74,21 +76,21 @@ jobs:
           # echo "Running setup from 01_setup_snowflake.sql..."
           # snow git execute \
           #   "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/01_setup_snowflake.sql" \
-          #   -D "environment='${BRANCH_NAME}'" \
+          #   -D "environment='${environment}'" \
           #   -D "retention_time=${RETENTION_TIME}"
           
           # Deploy data harmonization views
           # echo "Running harmonization from 03_harmonize_data.sql..."
           # snow git execute \
           #   "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/03_harmonize_data.sql" \
-          #   -D "environment='${BRANCH_NAME}'" \
+          #   -D "environment='${environment}'" \
           #   -D "retention_time=${RETENTION_TIME}"
           
           # Deploy orchestration tasks
           # echo "Running orchestration from 04_orchestrate_jobs.sql..."
           # snow git execute \
           #   "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/04_orchestrate_jobs.sql" \
-          #   -D "environment='${BRANCH_NAME}'" \
+          #   -D "environment='${environment}'" \
           #   -D "retention_time=${RETENTION_TIME}"
           
           echo "✅ Deployment completed successfully!"
