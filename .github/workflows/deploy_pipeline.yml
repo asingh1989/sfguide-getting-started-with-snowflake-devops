@@ -71,13 +71,13 @@ jobs:
             -D "environment='${environment}'" \
             -D "retention_time=${RETENTION_TIME}"
           
-           Individual SQL file executions (commented out - using wildcard pattern above instead)
-           Deploy setup first (creates databases and schemas)
-           echo "Running setup from 01_setup_snowflake.sql..."
-           snow git execute \
-             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/09_harmonize_data.py" \
-             -D "environment='${environment}'" \
-             -D "retention_time=${RETENTION_TIME}"
+          # Individual SQL file executions (commented out - using wildcard pattern above instead)
+          # Deploy setup first (creates databases and schemas)
+          # echo "Running setup from 01_setup_snowflake.sql..."
+          # snow git execute \
+          #   "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/01_setup_snowflake.sql" \
+          #   -D "environment='${environment}'" \
+          #   -D "retention_time=${RETENTION_TIME}"
           
           # Deploy data harmonization views
           # echo "Running harmonization from 03_harmonize_data.sql..."
