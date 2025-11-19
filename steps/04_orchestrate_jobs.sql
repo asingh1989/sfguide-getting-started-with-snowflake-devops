@@ -2,7 +2,7 @@ USE ROLE ACCOUNTADMIN;
 
 -- Set parameters from workflow
 
-USE SCHEMA quickstart_DEV.gold;
+USE SCHEMA quickstart__{{environment}}.gold;
 
 
 -- declarative target table of pipeline
@@ -19,7 +19,7 @@ create or alter table vacation_spots (
   , aquarium_cnt int
 , zoo_cnt int
 , korean_restaurant_cnt int
-) data_retention_time_in_days = 1;
+) data_retention_time_in_days = {{retention_time}};
 
 
 ----new task to merge pipeline results into target table
