@@ -1,5 +1,5 @@
 
-USE DATABASE QUICKSTART_DEV;
+USE DATABASE QUICKSTART__{{environment}};
 USE SCHEMA silver;
 -- Views to transform marketplace data in pipeline
 -- This file contains only SQL and can be executed with EXECUTE IMMEDIATE FROM
