@@ -88,17 +88,7 @@ manual-approval:
           issue-title: "Manual Approval Required for Production Deployment"
           issue-body: "Please approve or deny the deployment."
 
-   merge-branch:
-    needs: manual-approval    
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: everlytic/branch-merge@1.1.2
-        with:
-          github_token: ${{ github.token }}
-          source_ref: ${{ github.ref }}
-          target_branch: 'prod'
-          commit_message_template: '[Automated] Merged {source_ref} into target {target_branch}'
+
 
           
        
