@@ -66,7 +66,7 @@ create or ALTER TABLE QUICKSTART__{{environment}}.SILVER.AIRPORTS (
 	IATA_CODE VARCHAR(500)
 );
 
-
+                        
 CREATE or replace TABLE QUICKSTART__{{environment}}.SILVER.customers_new2 (
   id number not null, 
   first_name varchar, 
