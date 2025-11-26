@@ -66,4 +66,10 @@ create or ALTER TABLE QUICKSTART__{{environment}}.SILVER.AIRPORTS (
 	IATA_CODE VARCHAR(500)
 );
 
+
+CREATE or replace TABLE customer (
+  id number not null, 
+  first_name varchar, 
+  last_name varchar
+);
 LIST @bronze.raw;
