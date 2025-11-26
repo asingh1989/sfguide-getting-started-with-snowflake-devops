@@ -69,7 +69,7 @@ JOIN SNOWFLAKE_PUBLIC_DATA_FREE.PUBLIC_DATA_FREE.GEOGRAPHY_INDEX geo
 JOIN SNOWFLAKE_PUBLIC_DATA_FREE.PUBLIC_DATA_FREE.GEOGRAPHY_RELATIONSHIPS geo_rel 
     ON geo_rel.related_geo_id = geo.geo_id
 WHERE TRUE
-    AND ts.variable_name = 'Total Population, census.gov'
+   -- AND ts.variable_name = 'Total Population, census.gov'
     AND date >= '2020-01-01'
     AND geo.level = 'City'
     AND geo_rel.geo_id = 'country/USA'

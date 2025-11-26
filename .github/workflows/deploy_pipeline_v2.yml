@@ -1,17 +1,16 @@
 name: Deploy data pipeline
 
 # Action will run on pushes to selected branches
-# on:
-#   push:
-#     branches:
-#       - dev
-#       - main
+on:
+  push:
+    branches:
+      - dev  
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
-  deploy:
+  deploy-dev:
     runs-on: ubuntu-22.04
 
     env:
@@ -48,7 +47,7 @@ jobs:
       # Deploy pipeline with branch specific parameters
       - name: Deploy data pipeline to ${{ github.ref_name }}
         run: |
-          BRANCH_NAME=${{ github.ref_name }}
+          BRANCH_NAME=dev
           if [ "${BRANCH_NAME}" == "main" ]; then
             RETENTION_TIME=1
             environment=prod
@@ -70,27 +69,36 @@ jobs:
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
             -D "environment='${environment}'" \
             -D "retention_time=${RETENTION_TIME}"
+manual-approval:
+    name: Manual Approval
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    if: success() 
+
+    permissions:
+      issues: write
           
-          # Individual SQL file executions (commented out - using wildcard pattern above instead)
-          # Deploy setup first (creates databases and schemas)
-          # echo "Running setup from 01_setup_snowflake.sql..."
-          # snow git execute \
-          #   "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/01_setup_snowflake.sql" \
-          #   -D "environment='${environment}'" \
-          #   -D "retention_time=${RETENTION_TIME}"
+    steps:
+      - name: Await Manual Approval
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: asingh92 
+          minimum-approvals: 1
+          issue-title: "Manual Approval Required for Production Deployment"
+          issue-body: "Please approve or deny the deployment."
+
+   merge-branch:
+    needs: manual-approval    
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: everlytic/branch-merge@1.1.2
+        with:
+          github_token: ${{ github.token }}
+          source_ref: ${{ github.ref }}
+          target_branch: 'prod'
+          commit_message_template: '[Automated] Merged {source_ref} into target {target_branch}'
+
           
-          # Deploy data harmonization views
-          # echo "Running harmonization from 03_harmonize_data.sql..."
-          # snow git execute \
-          #   "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/03_harmonize_data.sql" \
-          #   -D "environment='${environment}'" \
-          #   -D "retention_time=${RETENTION_TIME}"
-          
-          # Deploy orchestration tasks
-          # echo "Running orchestration from 04_orchestrate_jobs.sql..."
-          # snow git execute \
-          #   "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/04_orchestrate_jobs.sql" \
-          #   -D "environment='${environment}'" \
-          #   -D "retention_time=${RETENTION_TIME}"
-          
-          echo "✅ Deployment completed successfully!"
+       
