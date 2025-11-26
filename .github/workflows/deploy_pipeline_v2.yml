@@ -17,7 +17,6 @@ jobs:
       REPO_NAME: "quickstart_common.public.quickstart_repo"
       SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
       SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
-      # Read connection secrets
       SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
       SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
 
@@ -44,7 +43,7 @@ jobs:
       - name: Fetch repository changes
         run: snow git fetch "${REPO_NAME}"
 
-      # Deploy pipeline with branch specific parameters
+      
       - name: Deploy data pipeline to ${{ github.ref_name }}
         run: |
           BRANCH_NAME=dev
@@ -57,7 +56,7 @@ jobs:
           fi
           
           # Use branch name for   database naming (QUICKSTART_prod or QUICKSTART_dev)
-          DB_NAME="QUICKSTART_${environment}"
+          DB_NAME="QUICKSTART__${environment}"
           
           echo "Deploying to environment: ${environment}"
           echo "Database name: ${DB_NAME}"
@@ -69,13 +68,45 @@ jobs:
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
             -D "environment='${environment}'" \
             -D "retention_time=${RETENTION_TIME}"
-  deploy-prod:
+  # Approval via GitHub Environments: configure environment "prod" with required reviewers
+  manual-approval:
+    name: Await approval to merge to main
+    runs-on: ubuntu-latest
     needs: deploy-dev
+    if: success()
+    environment:
+      name: prod
+
+    steps:
+      - name: Approval gate
+        run: echo "Waiting for environment approval for 'prod'..."
+
+  merge-branch:
+    name: Merge dev into main
+    needs: manual-approval
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to push merge commit
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Merge dev -> main
+        uses: everlytic/branch-merge@1.1.2
+        with:
+          github_token: ${{ github.token }}
+          source_ref: dev
+          target_branch: main
+          commit_message_template: '[Automated] Merged {source_ref} into target {target_branch}'          
+  
+  deploy-prod:
+    needs: merge-branch
     runs-on: ubuntu-22.04
     environment:
-      name: prod  # Configure required reviewers in repo Settings -> Environments
+      name: prod
     permissions:
-      contents: write
+      contents: read
     env:
       REPO_NAME: "quickstart_common.public.quickstart_repo"
       SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
@@ -106,12 +137,15 @@ jobs:
           BRANCH_NAME=main
           RETENTION_TIME=1
           environment=prod
+
           DB_NAME="QUICKSTART__${environment}"
           echo "Deploying to environment: ${environment}"
+          echo "Database name: ${DB_NAME}"
+          echo "Retention time: ${RETENTION_TIME}"
+
           snow git execute \
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
             -D "environment='${environment}'" \
-            -D "retention_time=${RETENTION_TIME}"  
-
+            -D "retention_time=${RETENTION_TIME}"
           
        
