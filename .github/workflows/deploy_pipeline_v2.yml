@@ -69,7 +69,7 @@ jobs:
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
             -D "environment='${environment}'" \
             -D "retention_time=${RETENTION_TIME}"
-deploy-prod:
+  deploy-prod:
     needs: deploy-dev
     runs-on: ubuntu-22.04
     environment:
