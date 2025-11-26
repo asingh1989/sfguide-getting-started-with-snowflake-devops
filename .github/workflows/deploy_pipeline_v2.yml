@@ -69,26 +69,49 @@ jobs:
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
             -D "environment='${environment}'" \
             -D "retention_time=${RETENTION_TIME}"
-  manual-approvals:
-    name: Manual Approval
-    runs-on: ubuntu-latest
+deploy-prod:
     needs: deploy-dev
-    if: success()
-
+    runs-on: ubuntu-22.04
+    environment:
+      name: prod  # Configure required reviewers in repo Settings -> Environments
     permissions:
-      issues: write
-          
+      contents: write
+    env:
+      REPO_NAME: "quickstart_common.public.quickstart_repo"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
     steps:
-      - name: Await Manual Approval
-        uses: trstringer/manual-approval@v1
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Private Key
+        run: |
+          mkdir -p .snowflake
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/rsa_key.pem
+          chmod 600 .snowflake/rsa_key.pem
+
+      - name: Install snowflake-cli
+        uses: Snowflake-Labs/snowflake-cli-action@v1.5
         with:
-          secret: ${{ github.token }}
-          approvers: asingh92
-          minimum-approvals: 1
-          issue-title: "Manual Approval Required for Production Deployment"
-          issue-body: "Please approve or deny the deployment."
+          cli-version: "latest"
+          default-config-file-path: ".snowflake/config.toml"
 
+      - name: Fetch repository changes
+        run: snow git fetch "${REPO_NAME}"
 
+      - name: Deploy data pipeline to prod
+        run: |
+          BRANCH_NAME=main
+          RETENTION_TIME=1
+          environment=prod
+          DB_NAME="QUICKSTART_${environment}"
+          echo "Deploying to environment: ${environment}"
+          snow git execute \
+            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
+            -D "environment='${environment}'" \
+            -D "retention_time=${RETENTION_TIME}"  
 
           
        
