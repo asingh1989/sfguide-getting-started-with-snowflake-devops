@@ -69,11 +69,11 @@ jobs:
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
             -D "environment='${environment}'" \
             -D "retention_time=${RETENTION_TIME}"
-manual-approval:
+  manual-approval:
     name: Manual Approval
     runs-on: ubuntu-latest
     needs: deploy-dev
-    if: success() 
+    if: success()
 
     permissions:
       issues: write
@@ -82,8 +82,8 @@ manual-approval:
       - name: Await Manual Approval
         uses: trstringer/manual-approval@v1
         with:
-          secret: ${{ github.TOKEN }}
-          approvers: asingh92 
+          secret: ${{ github.token }}
+          approvers: asingh92
           minimum-approvals: 1
           issue-title: "Manual Approval Required for Production Deployment"
           issue-body: "Please approve or deny the deployment."
