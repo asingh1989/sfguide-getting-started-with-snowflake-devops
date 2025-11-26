@@ -69,7 +69,7 @@ jobs:
             "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
             -D "environment='${environment}'" \
             -D "retention_time=${RETENTION_TIME}"
-  manual-approval:
+  manual-approvals:
     name: Manual Approval
     runs-on: ubuntu-latest
     needs: deploy-dev
