@@ -1,0 +1,151 @@
+name: Deploy data pipeline
+
+# Action will run on pushes to selected branches
+on:
+  push:
+    branches:
+      - dev  
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-22.04
+
+    env:
+      REPO_NAME: "quickstart_common.public.quickstart_repo"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
+
+    steps:
+      # Checkout step is necessary if you want to use a config file from your repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Write private key secret as file
+      - name: Configure Private Key
+        run: |
+          mkdir -p .snowflake
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/rsa_key.pem
+          chmod 600 .snowflake/rsa_key.pem
+
+      # Install Snowflake CLI GitHub Action and point to config file
+      - name: Install snowflake-cli
+        uses: Snowflake-Labs/snowflake-cli-action@v1.5
+        with:
+          cli-version: "latest"
+          default-config-file-path: ".snowflake/config.toml"
+
+      # Update Snowflake's copy of the repository
+      - name: Fetch repository changes
+        run: snow git fetch "${REPO_NAME}"
+
+      
+      - name: Deploy data pipeline to ${{ github.ref_name }}
+        run: |
+          BRANCH_NAME=dev
+          if [ "${BRANCH_NAME}" == "main" ]; then
+            RETENTION_TIME=1
+            environment=prod
+          else
+            RETENTION_TIME=0
+            environment=dev
+          fi
+          
+          # Use branch name for   database naming (QUICKSTART_prod or QUICKSTART_dev)
+          DB_NAME="QUICKSTART__${environment}"
+          
+          echo "Deploying to environment: ${environment}"
+          echo "Database name: ${DB_NAME}"
+          echo "Retention time: ${RETENTION_TIME}"
+          
+          # Execute all pipeline steps using wildcard pattern (01, 03, 04)
+          echo "Running pipeline steps: 01_setup, 03_harmonize, 04_orchestrate..."
+          snow git execute \
+            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
+            -D "environment='${environment}'" \
+            -D "retention_time=${RETENTION_TIME}"
+  # Approval via GitHub Environments: configure environment "prod" with required reviewers
+  manual-approval:
+    name: Await approval to merge to main
+    runs-on: ubuntu-latest
+    needs: deploy-dev
+    if: success()
+    environment:
+      name: prod
+
+    steps:
+      - name: Approval gate
+        run: echo "Waiting for environment approval for 'prod'..."
+
+  merge-branch:
+    name: Merge dev into main
+    needs: manual-approval
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # required to push merge commit
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Merge dev -> main
+        uses: everlytic/branch-merge@1.1.2
+        with:
+          github_token: ${{ github.token }}
+          source_ref: dev
+          target_branch: main
+          commit_message_template: '[Automated] Merged {source_ref} into target {target_branch}'          
+  
+  deploy-prod:
+    needs: merge-branch
+    runs-on: ubuntu-22.04
+    environment:
+      name: prod
+    permissions:
+      contents: read
+    env:
+      REPO_NAME: "quickstart_common.public.quickstart_repo"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Private Key
+        run: |
+          mkdir -p .snowflake
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/rsa_key.pem
+          chmod 600 .snowflake/rsa_key.pem
+
+      - name: Install snowflake-cli
+        uses: Snowflake-Labs/snowflake-cli-action@v1.5
+        with:
+          cli-version: "latest"
+          default-config-file-path: ".snowflake/config.toml"
+
+      - name: Fetch repository changes
+        run: snow git fetch "${REPO_NAME}"
+
+      - name: Deploy data pipeline to prod
+        run: |
+          BRANCH_NAME=main
+          RETENTION_TIME=1
+          environment=prod
+
+          DB_NAME="QUICKSTART__${environment}"
+          echo "Deploying to environment: ${environment}"
+          echo "Database name: ${DB_NAME}"
+          echo "Retention time: ${RETENTION_TIME}"
+
+          snow git execute \
+            "@${REPO_NAME}/branches/${BRANCH_NAME}/steps/0[134]_*" \
+            -D "environment='${environment}'" \
+            -D "retention_time=${RETENTION_TIME}"
+          
+       
