@@ -64,9 +64,7 @@ COPY FILES INTO @bronze.raw FROM @quickstart_common.public.quickstart_repo/branc
 create or ALTER TABLE QUICKSTART__{{environment}}.SILVER.AIRPORTS (
 	CITY_NAME VARCHAR(500),
 	IATA_CODE VARCHAR(500)
-);
-
-                        
+);         
 CREATE or replace TABLE QUICKSTART__{{environment}}.SILVER.customers_new2 (
   id number not null, 
   first_name varchar, 
