@@ -12,7 +12,7 @@ CREATE OR ALTER DATABASE QUICKSTART_COMMON;
 
 
 
---- for private repository
+----- for private repository
 -- CREATE OR REPLACE SECRET git_secret
 --   TYPE = password
 --   USERNAME = '<github username>'
