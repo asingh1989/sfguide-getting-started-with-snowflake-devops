@@ -1,6 +1,6 @@
 name: Deploy data pipeline
 
-# Action will run on pushes to selected branches
+# Action will run on pushes to selected branchess
 # on:
 #   push:
 #     branches:
