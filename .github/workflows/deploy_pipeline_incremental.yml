@@ -8,15 +8,11 @@ on:
 
 jobs:
   deploy-snowflake-changes:
-    name: Deploy to Snowflake
     runs-on: ubuntu-latest
-
-
     env:
       SNOWFLAKE_CONNECTION: default
       SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
       SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
-      # Read connection secrets
       SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
       SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
       SNOWFLAKE_CONNECTIONS_DEFAULT_WAREHOUSE: COMPUTE_WH
@@ -45,6 +41,12 @@ jobs:
           mkdir -p .snowflake
           echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/rsa_key.pem
           chmod 600 .snowflake/rsa_key.pem
+
+
+      - name: run file
+        # Run locally or in the workflow after the connection test
+        snow sql -f "Snowflake/01_Table/Customer.sql"
+
 
       - name: Test Basic Snowflake Connection
         run: |
