@@ -13,11 +13,16 @@ jobs:
 
 
     env:
+      SNOWFLAKE_CONNECTION: default
       SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
       SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
       # Read connection secrets
       SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
       SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_WAREHOUSE: CICD_WH
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ROLE: ACCOUNTADMIN
+      SNOWFLAKE_CONNECTIONS_DEFAULT_DATABASE: CICD_DEMO_DB
+      SNOWFLAKE_CONNECTIONS_DEFAULT_SCHEMA: TECH
 
     steps:
       # Check out the repository's code.
@@ -75,10 +80,19 @@ jobs:
       - name: Find and Deploy Modified SQL Files
         run: |
           echo "Identifying changed files..."
+          BEFORE_SHA="${{ github.event.before }}"
+          CURRENT_SHA="${{ github.sha }}"
+          # Fallback for first push/branch where BEFORE_SHA may be empty or all zeros
+          if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "No valid before SHA; deriving base from main."
+            git fetch origin main || true
+            BASE=$(git merge-base HEAD origin/main || echo "")
+            BEFORE_SHA="${BASE:-$(git rev-list --max-parents=0 HEAD | tail -n 1)}"
+          fi
           
           # Get a list of all changed .sql files between the previous commit and the current one.
           # This reliably finds all files that were part of the push.
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'Snowflake/**/*.sql' || true)
+          CHANGED_FILES=$(git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- 'Snowflake/**/*.sql' || true)
 
           # If no .sql files were changed, exit the script gracefully.
           if [ -z "$CHANGED_FILES" ]; then
