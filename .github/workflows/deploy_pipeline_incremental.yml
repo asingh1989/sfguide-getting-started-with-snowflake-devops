@@ -48,11 +48,12 @@ jobs:
 
       - name: Create and Activate Default Connection
         run: |
-          snow connection add default \
+          snow connection add \
             --account "$SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT" \
             --user "$SNOWFLAKE_CONNECTIONS_DEFAULT_USER" \
             --authenticator "SNOWFLAKE_JWT" \
-            --private-key-file ".snowflake/rsa_key.pem"
+            --private-key-file ".snowflake/rsa_key.pem" \
+            default
           snow connection use default
 
       - name: Test Basic Snowflake Connection
