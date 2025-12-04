@@ -1,0 +1,133 @@
+name: Deploy Modified Files to Snowflake PROD env..........
+
+# Triggers ONLY on a push to the main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-snowflake-changes:
+    name: Deploy to Snowflake
+    runs-on: ubuntu-latest
+
+
+    env:
+      SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
+      # Read connection secrets
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
+
+    steps:
+      # Check out the repository's code.
+      # fetch-depth: 0 - get all commit history for the git diff command.
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      # Install Snowflake CLI so `snow` is available on PATH
+      - name: Install snowflake-cli
+        uses: Snowflake-Labs/snowflake-cli-action@v1.5
+        with:
+          cli-version: "latest"
+          default-config-file-path: ".snowflake/config_incremental.toml"  
+
+      # Write private key secret as file (ensure SnowCLI can read it)
+      - name: Configure Private Key
+        run: |
+          mkdir -p .snowflake
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/rsa_key.pem
+          chmod 600 .snowflake/rsa_key.pem
+
+      - name: Test Basic Snowflake Connection
+        run: |
+          echo "🔗 Testing basic Snowflake connection..."
+          if snow connection test; then
+            echo "✅ Basic connection test passed"
+          else
+            echo "❌ Basic connection test failed"
+            exit 1
+          fi
+      
+      - name: Test SQL Query Execution
+        run: |
+          echo "📊 Testing SQL query execution..."
+          snow sql -q "SELECT CURRENT_USER() as current_user, CURRENT_ROLE() as current_role, CURRENT_WAREHOUSE() as current_warehouse, CURRENT_DATABASE() as current_database, CURRENT_SCHEMA() as current_schema;"
+
+
+
+      - name: Debug Snowflake env
+        run: |
+          echo "Account present? ${SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT:+yes}"
+          echo "Account value: '${SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT}'"
+          echo "User present? ${SNOWFLAKE_CONNECTIONS_DEFAULT_USER:+yes}"
+          echo "User value: '${SNOWFLAKE_CONNECTIONS_DEFAULT_USER}'"
+          
+          
+          
+          [ -f ".snowflake/rsa_key.pem" ] && echo "yes" || echo "no"
+
+
+      - name: Find and Deploy Modified SQL Files
+        run: |
+          echo "Identifying changed files..."
+          
+          # Get a list of all changed .sql files between the previous commit and the current one.
+          # This reliably finds all files that were part of the push.
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'Snowflake/**/*.sql' || true)
+
+          # If no .sql files were changed, exit the script gracefully.
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No modified SQL files found in this push."
+            exit 0
+          fi
+
+          # Sort the files alphabetically to ensure correct deployment order (e.g., schemas before tables).
+          FILES_TO_DEPLOY=$(echo "$CHANGED_FILES" | sort)
+
+          echo "The following files will be deployed in this order:"
+          echo "$FILES_TO_DEPLOY"
+
+          # This variable will track if any script fails during the loop.
+          OVERALL_STATUS=0
+
+          # Loop through each file that needs to be deployed.
+          while IFS= read -r FILE; do
+            if [ -n "$FILE" ]; then
+              echo "--------------------------------------------------"
+              echo "Executing: $FILE"
+              
+              # Execute the SQL file. If the command fails, the `else` block will run.
+              # This prevents the entire workflow from stopping on a single error.
+              if snow sql -f "$FILE" --temporary-connection > output.log 2>&1; then
+                # This block runs on SUCCESS.
+                STATUS="SUCCESS"
+                ERROR_MSG=""
+                echo "Successfully executed $FILE"
+              else
+                # This block runs on FAILURE.
+                STATUS="FAILED"
+                # Capture the error message from the output file.
+                ERROR_MSG=$(cat output.log | sed "s/'/''/g")
+                echo "Execution of $FILE failed with error: $ERROR_MSG"
+                # Mark the entire job as failed.
+                OVERALL_STATUS=1
+              fi
+              
+              # Construct and run a SQL query to log the outcome (SUCCESS or FAILED) to the history table.
+              LOG_QUERY="INSERT INTO CICD_DEMO_DB.TECH.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$FILE', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
+              snow sql -q "$LOG_QUERY" --temporary-connection
+              echo "Logged deployment for $FILE with status: $STATUS"
+              
+              echo "--------------------------------------------------"
+            fi
+          done <<< "$FILES_TO_DEPLOY"
+
+          # After the loop, if any file failed (OVERALL_STATUS=1), exit with an error code.
+          # This will mark the entire GitHub Actions job as "Failed".
+          if [ $OVERALL_STATUS -eq 1 ]; then
+            echo "One or more SQL scripts failed. Failing the workflow."
+            exit 1
+          fi
