@@ -18,6 +18,10 @@ jobs:
       # Read connection secrets
       SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
       SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_WAREHOUSE: COMPUTE_WH
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ROLE: ACCOUNTADMIN
+      SNOWFLAKE_CONNECTIONS_DEFAULT_DATABASE: CICD_DEMO_DB
+      SNOWFLAKE_CONNECTIONS_DEFAULT_SCHEMA: TECH
 
     steps:
       # Check out the repository's code.
@@ -32,7 +36,7 @@ jobs:
         uses: Snowflake-Labs/snowflake-cli-action@v1.5
         with:
           cli-version: "latest"
-          default-config-file-path: ".snowflake/config_incremental.toml"  
+          # default-config-file-path: ".snowflake/config_incremental.toml"  
 
       # Write private key secret as file (ensure SnowCLI can read it)
       - name: Configure Private Key
@@ -71,9 +75,6 @@ jobs:
         run: |
           snow connection list || true
           snow connection show default || true
-          
-          
-          
           [ -f ".snowflake/rsa_key.pem" ] && echo "yes" || echo "no"
 
 
