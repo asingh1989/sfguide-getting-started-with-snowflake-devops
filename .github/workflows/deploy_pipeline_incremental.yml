@@ -32,7 +32,7 @@ jobs:
         uses: Snowflake-Labs/snowflake-cli-action@v1.5
         with:
           cli-version: "latest"
-          default-config-file-path: ".snowflake/config_incremental.toml"  
+          default-config-file-path: ".snowflake/config.toml"  
 
       # Write private key secret as file (ensure SnowCLI can read it)
       - name: Configure Private Key
