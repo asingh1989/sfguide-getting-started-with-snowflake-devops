@@ -13,6 +13,7 @@ jobs:
 
 
     env:
+      SNOWFLAKE_CONNECTION: default
       SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
       SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
       # Read connection secrets
