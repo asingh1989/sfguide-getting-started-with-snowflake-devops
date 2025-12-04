@@ -1,6 +1,6 @@
 [connections.default]
 warehouse = "CICD_WH"
-role = "ACCOUNTADMIN"
+role = "CICD_ROLE"
 database = "CICD_DEMO_DB"
 schema = "TECH"
 account = "PJYLBXO-IB21088"
