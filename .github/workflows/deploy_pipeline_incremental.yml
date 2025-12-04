@@ -68,7 +68,9 @@ jobs:
           
           
           [ -f ".snowflake/rsa_key.pem" ] && echo "yes" || echo "no"
-
+      - name: Run TESTTABLE.sql
+        run: |
+          snow sql -f "Snowflake/01_Table/TESTTABLE.sql" --temporary-connection
 
       - name: Find and Deploy Modified SQL Files
         run: |
