@@ -1,4 +1,4 @@
-[connections.default]
+--[connections.default]
 warehouse = "QUICKSTART_WH"
 role = "ACCOUNTADMIN"
 database = "QUICKSTART_COMMON"
