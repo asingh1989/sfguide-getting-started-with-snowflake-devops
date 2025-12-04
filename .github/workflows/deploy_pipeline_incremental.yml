@@ -46,20 +46,7 @@ jobs:
           echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/rsa_key.pem
           chmod 600 .snowflake/rsa_key.pem
 
-      - name: Create SnowCLI Config File
-        run: |
-          cat > .snowflake/config.toml << 'EOF'
-          [connections.default]
-          account = "${{ secrets.SNOWFLAKE_ACCOUNT }}"
-          user = "${{ secrets.SNOWFLAKE_USER }}"
-          authenticator = "SNOWFLAKE_JWT"
-          private_key_file = ".snowflake/rsa_key.pem"
-          warehouse = "CICD_WH"
-          role = "ACCOUNTADMIN"
-          database = "CICD_DEMO_DB"
-          schema = "TECH"
-          EOF
-          echo "✅ Config file created at .snowflake/config.toml"
+      
 
       - name: Test Basic Snowflake Connection
         run: |
