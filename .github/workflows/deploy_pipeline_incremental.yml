@@ -1,4 +1,18 @@
-name: Deploy Modified Files to Snowflake PROD env..........
+name: Deploy Modified Files t      # Install Snowflake CLI so `snow` is available on PATH
+      - name: Install snowflake-cli
+        uses: Snowflake-Labs/snowflake-cli-action@v1.5
+        with:
+          cli-version: "latest"
+          default-config-file-path: ".snowflake/config.toml"
+
+      # Write private key secret as file (ensure SnowCLI can read it)
+      - name: Configure Private Key
+        run: |
+          mkdir -p .snowflake
+          echo "${{ secrets.SNOWFLAKE_PRIVATE_KEY }}" > .snowflake/rsa_key.pem
+          chmod 600 .snowflake/rsa_key.pem
+
+      - name: Test Basic Snowflake ConnectionD env..........
 
 # Triggers ONLY on a push to the main branch
 on:
@@ -73,10 +87,19 @@ jobs:
       - name: Find and Deploy Modified SQL Files
         run: |
           echo "Identifying changed files..."
+          BEFORE_SHA="${{ github.event.before }}"
+          CURRENT_SHA="${{ github.sha }}"
+          # Fallback for first push/branch where BEFORE_SHA may be empty or all zeros
+          if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            echo "No valid before SHA; deriving base from main."
+            git fetch origin main || true
+            BASE=$(git merge-base HEAD origin/main || echo "")
+            BEFORE_SHA="${BASE:-$(git rev-list --max-parents=0 HEAD | tail -n 1)}"
+          fi
           
           # Get a list of all changed .sql files between the previous commit and the current one.
           # This reliably finds all files that were part of the push.
-          CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} -- 'Snowflake/**/*.sql' || true)
+          CHANGED_FILES=$(git diff --name-only "$BEFORE_SHA" "$CURRENT_SHA" -- 'Snowflake/**/*.sql' || true)
 
           # If no .sql files were changed, exit the script gracefully.
           if [ -z "$CHANGED_FILES" ]; then
