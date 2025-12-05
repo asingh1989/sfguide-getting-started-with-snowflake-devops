@@ -1,4 +1,4 @@
--- Snowflake/01_Table/CUSTOMERS.sql
+-- Snowflake/01_Table/CUSTOMERS.sql....
 
 CREATE OR REPLACE TABLE CICD_DEMO_DB.PUBLIC.CUSTOMERS396 (
 
