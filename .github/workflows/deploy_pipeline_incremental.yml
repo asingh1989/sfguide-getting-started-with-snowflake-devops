@@ -1,3 +1,5 @@
+name: Deploy Modified Files to Snowflake PROD env
+
 # Triggers ONLY on a push to the main branch
 on:
   push:
