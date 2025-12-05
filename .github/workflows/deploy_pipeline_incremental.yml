@@ -1,4 +1,4 @@
-name: Deploy Modified Files t      # Install Snowflake CLI so `snow` is available on PATH
+name: Deploy Modified Files t      # Install Snowflake CLI so `snow` is available on PATH....
       - name: Install snowflake-cli
         uses: Snowflake-Labs/snowflake-cli-action@v1.5
         with:
