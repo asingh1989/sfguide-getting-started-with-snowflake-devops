@@ -1,4 +1,4 @@
-name: Deploy Modified Files to Snowflake PROD env
+  name: Deploy Modified Files to Snowflake PROD env
 
 # Triggers ONLY on a push to the main branch
 on:
@@ -13,6 +13,7 @@ jobs:
 
 
     env:
+      REPO_NAME: "quickstart_common.public.quickstart_repo"
       SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
       SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
       # Read connection secrets
@@ -110,7 +111,7 @@ jobs:
               
               # Execute the SQL file. If the command fails, the `else` block will run.
               # This prevents the entire workflow from stopping on a single error.
-              if snow sql -f "$FILE" --temporary-connection > output.log 2>&1; then
+              if snow sql -f "$FILE"  > output.log 2>&1; then
                 # This block runs on SUCCESS.
                 STATUS="SUCCESS"
                 ERROR_MSG=""
