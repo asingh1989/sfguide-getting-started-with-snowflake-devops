@@ -1,9 +1,0 @@
-[connections.default]
-warehouse = "QUICKSTART_WH"
-role = "ACCOUNTADMIN"
-database = "QUICKSTART_COMMON"
-schema = "PUBLIC"
-account = "PJYLBXO-IB21088"
-user = "asingh92"
-password = "Singh007@mr@it"
-

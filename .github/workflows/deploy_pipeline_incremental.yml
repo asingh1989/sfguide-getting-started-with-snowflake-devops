@@ -1,10 +1,11 @@
-
+name: Deploy Modified Files to Snowflake PROD env
 
 # Triggers ONLY on a push to the main branch
 # on:
 #   push:
 #     branches:
 #       - dev
+#       - main
 
 jobs:
   deploy-snowflake-changes:
@@ -13,11 +14,12 @@ jobs:
 
 
     env:
+      REPO_NAME: "quickstart_common.public.quickstart_repo"
       SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
       SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
       # Read connection secrets
       SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER_INC }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
 
     steps:
       # Check out the repository's code.
@@ -113,7 +115,7 @@ jobs:
               
               # Execute the SQL file. If the command fails, the `else` block will run.
               # This prevents the entire workflow from stopping on a single error.
-              if snow sql -f "$FILE" --temporary-connection > output.log 2>&1; then
+              if snow sql -f "$FILE" > output.log 2>&1; then
                 # This block runs on SUCCESS.
                 STATUS="SUCCESS"
                 ERROR_MSG=""
@@ -130,7 +132,7 @@ jobs:
               
               # Construct and run a SQL query to log the outcome (SUCCESS or FAILED) to the history table.
               LOG_QUERY="INSERT INTO CICD_DEMO_DB.TECH.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$FILE', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
-              snow sql -q "$LOG_QUERY" --temporary-connection
+              snow sql -q "$LOG_QUERY" || echo "⚠️ Logging insert failed; continuing..."
               echo "Logged deployment for $FILE with status: $STATUS"
               
               echo "--------------------------------------------------"

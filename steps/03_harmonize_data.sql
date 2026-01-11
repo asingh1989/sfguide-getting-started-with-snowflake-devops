@@ -1,5 +1,6 @@
 
-USE DATABASE QUICKSTART__{{environment}};
+-- USE DATABASE QUICKSTART__{{environment}};
+USE DATABASE QUICKSTART_PROD;
 USE SCHEMA silver;
 -- Views to transform marketplace data in pipeline
 -- This file contains only SQL and can be executed with EXECUTE IMMEDIATE FROM
@@ -128,6 +129,24 @@ WHERE TRUE
 GROUP BY city.geo_id, city.geo_name;
 
 CREATE OR REPLACE VIEW attractions_NEW12 AS
+SELECT
+    city.geo_id,
+    city.geo_name,
+    COUNT(CASE WHEN category_main = 'Aquarium' THEN 1 END) aquarium_cnt,
+    COUNT(CASE WHEN category_main = 'Zoo' THEN 1 END) zoo_cnt,
+    COUNT(CASE WHEN category_main = 'Korean Restaurant' THEN 1 END) korean_restaurant_cnt
+FROM SNOWFLAKE_PUBLIC_DATA_FREE.PUBLIC_DATA_FREE.POINT_OF_INTEREST_INDEX poi
+JOIN SNOWFLAKE_PUBLIC_DATA_FREE.PUBLIC_DATA_FREE.POINT_OF_INTEREST_ADDRESSES_RELATIONSHIPS poi_add 
+    ON poi_add.poi_id = poi.poi_id
+JOIN SNOWFLAKE_PUBLIC_DATA_FREE.PUBLIC_DATA_FREE.US_ADDRESSES address 
+    ON address.address_id = poi_add.address_id
+JOIN major_us_cities city ON city.geo_id = address.id_city
+WHERE TRUE
+    AND category_main IN ('Aquarium', 'Zoo', 'Korean Restaurant')
+    AND id_country = 'country/USA'
+GROUP BY city.geo_id, city.geo_name;
+
+CREATE OR REPLACE VIEW attractions_NEW1 AS
 SELECT
     city.geo_id,
     city.geo_name,
