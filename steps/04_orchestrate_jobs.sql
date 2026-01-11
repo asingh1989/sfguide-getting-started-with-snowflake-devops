@@ -2,7 +2,7 @@ USE ROLE ACCOUNTADMIN;
 
 -- Set parameters from workflow
 
-USE SCHEMA quickstart__{{environment}}.gold;
+USE SCHEMA quickstart_PROD.gold;
 
 
 -- declarative target table of pipeline
@@ -19,7 +19,8 @@ create or alter table vacation_spots (
   , aquarium_cnt int
 , zoo_cnt int
 , korean_restaurant_cnt int
-) data_retention_time_in_days = {{retention_time}};
+) data_retention_time_in_days = 0;
+-- {{retention_time}};
 
 
 ----new task to merge pipeline results into target table
@@ -127,13 +128,13 @@ execute task vacation_spots_update;
 SHOW TASKS;
 
 -- Task execution history in the past day
-SELECT *
-FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(
-    SCHEDULED_TIME_RANGE_START=>DATEADD('DAY',-1,CURRENT_TIMESTAMP()),
-    RESULT_LIMIT => 100))
-ORDER BY SCHEDULED_TIME DESC;
+ SELECT *
+ FROM TABLE(INFORMATION_SCHEMA.TASK_HISTORY(
+     SCHEDULED_TIME_RANGE_START=>DATEADD('DAY',-1,CURRENT_TIMESTAMP()),
+     RESULT_LIMIT => 100))
+ ORDER BY SCHEDULED_TIME DESC;
 
--- Scheduled task runs
+ ---Scheduled task runs
 SELECT
     TIMESTAMPDIFF(SECOND, CURRENT_TIMESTAMP, SCHEDULED_TIME) NEXT_RUN,
     SCHEDULED_TIME,
