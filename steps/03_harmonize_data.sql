@@ -128,7 +128,7 @@ WHERE TRUE
     AND id_country = 'country/USA'
 GROUP BY city.geo_id, city.geo_name;
 
-CREATE OR REPLACE VIEW attractions_NEW AS
+CREATE OR REPLACE VIEW attractions_NEW12 AS
 SELECT
     city.geo_id,
     city.geo_name,
