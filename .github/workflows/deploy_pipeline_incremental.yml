@@ -1,10 +1,10 @@
 
 
 # Triggers ONLY on a push to the main branch
-on:
-  push:
-    branches:
-      - dev
+# on:
+#   push:
+#     branches:
+#       - dev
 
 jobs:
   deploy-snowflake-changes:
