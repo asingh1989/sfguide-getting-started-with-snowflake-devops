@@ -1,10 +1,10 @@
 name: Deploy data pipeline
 
 # Action will run on pushes to selected branchess
-# on:
-#   push:
-#     branches:
-#       - dev  
+on:
+  push:
+    branches:
+      - dev  
 
   # Allows you to run this workflow manually from the Actions tab
   # workflow_dispatch:

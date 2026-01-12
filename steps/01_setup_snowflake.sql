@@ -38,7 +38,7 @@ CREATE OR REPLACE GIT REPOSITORY quickstart_common.public.quickstart_repo
 -- Create environment-specific database using parameter first=
 -- CREATE OR ALTER DATABASE QUICKSTART__{{environment}};
 CREATE OR ALTER DATABASE QUICKSTART_PROD;
-
+---fgfgf----
 
 -- To monitor data pipeline's completion
 CREATE OR REPLACE NOTIFICATION INTEGRATION email_integration
