@@ -28,8 +28,12 @@ jobs:
         with:
           fetch-depth: 0 # Required to compare commits
 
-      - name: Install SnowCLI
-        run: pip install "snowflake-cli-labs==2.0.1"
+      # Install Snowflake CLI GitHub Action and point to config file
+      - name: Install snowflake-cli
+        uses: Snowflake-Labs/snowflake-cli-action@v1.5
+        with:
+          cli-version: "latest"
+          default-config-file-path: ".snowflake/config.toml"
 
       - name: Get Changed SQL Files
         id: changed-files
