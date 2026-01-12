@@ -1,0 +1,9 @@
+[connections.default]
+warehouse = "CICD_WH"
+role = "ACCOUNTADMIN"
+database = "CICD_DEMO_DB"
+schema = "TECH"
+account = "PJYLBXO-IB21088"
+user = "asingh92"
+authenticator = "SNOWFLAKE_JWT"
+private_key_file = ".snowflake/rsa_key.pem"
