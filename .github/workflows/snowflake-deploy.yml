@@ -1,0 +1,117 @@
+name: Deploy Snowflake Objects from DDL folder
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  workflow_dispatch:
+
+jobs:
+  # ===================================================================================
+  #  JOB TO DEPLOY TO THE 'DEV' ENVIRONMENT
+  # ===================================================================================
+  deploy-to-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    env:
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT_DEV }}
+      SNOWFLAKE_USERNAME: ${{ secrets.SNOWFLAKE_USERNAME_DEV }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD_DEV }}
+      SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE_DEV }}
+      SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE_DEV }}
+      SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_DEV }}
+
+    steps:
+      - name: Checkout Full Git History
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to compare commits
+
+      - name: Install SnowCLI
+        run: pip install "snowflake-cli-labs==2.0.1"
+
+      - name: Get Changed SQL Files
+        id: changed-files
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
+            echo "Running on initial push or manual trigger. Finding all SQL files in 'ddl/'."
+            find ddl -type f -name "*.sql" > changed_files.txt
+          else
+            echo "Incremental push detected. Finding changed SQL files in 'ddl/'."
+            git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^ddl/.*\.sql$' > changed_files.txt || true
+          fi
+
+          if [ ! -s changed_files.txt ]; then
+            echo "No SQL files changed in the 'ddl' directory."
+            echo "any_changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "The following SQL files will be deployed:"
+            cat changed_files.txt
+            echo "any_changed=true" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Deploy Changed Files to Dev
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "Deploying to ${SNOWFLAKE_DATABASE}..."
+          # Sort the files to ensure tables are deployed before views, etc.
+          sort changed_files.txt | while IFS= read -r file; do
+              echo "Executing $file"
+              snow sql -q "USE DATABASE $SNOWFLAKE_DATABASE; USE SCHEMA MY_SCHEMA;" -f "$file"
+          done
+
+  # ===================================================================================
+  #  JOB TO DEPLOY TO THE 'PROD' ENVIRONMENT
+  # ===================================================================================
+  deploy-to-prod:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT_PROD }}
+      SNOWFLAKE_USERNAME: ${{ secrets.SNOWFLAKE_USERNAME_PROD }}
+      SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD_PROD }}
+      SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE_PROD }}
+      SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE_PROD }}
+      SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_PROD }}
+
+    steps:
+      - name: Checkout Full Git History
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to compare commits
+
+      - name: Install SnowCLI
+        run: pip install "snowflake-cli-labs==2.0.1"
+
+      - name: Get Changed SQL Files
+        id: changed-files
+        run: |
+          # This logic is identical for both dev and prod
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
+            echo "Running on initial push or manual trigger. Finding all SQL files in 'ddl/'."
+            find ddl -type f -name "*.sql" > changed_files.txt
+          else
+            echo "Incremental push detected. Finding changed SQL files in 'ddl/'."
+            git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^ddl/.*\.sql$' > changed_files.txt || true
+          fi
+
+          if [ ! -s changed_files.txt ]; then
+            echo "No SQL files changed in the 'ddl' directory."
+            echo "any_changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "The following SQL files will be deployed:"
+            cat changed_files.txt
+            echo "any_changed=true" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Deploy Changed Files to Prod
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          echo "Deploying to ${SNOWFLAKE_DATABASE}..."
+          # Sort the files to ensure tables are deployed before views, etc.
+          sort changed_files.txt | while IFS= read -r file; do
+              echo "Executing $file"
+              snow sql -q "USE DATABASE $SNOWFLAKE_DATABASE; USE SCHEMA MY_SCHEMA;" -f "$file"
+          done
