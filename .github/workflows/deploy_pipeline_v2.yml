@@ -1,13 +1,13 @@
 name: Deploy data pipeline
 
-# Action will run on pushes to selected branchess
+# Action will run on pushes to selected branches
 on:
   push:
     branches:
-      - dev  
+      - dev
 
   # Allows you to run this workflow manually from the Actions tab
-  # workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   deploy-dev:
@@ -56,7 +56,7 @@ jobs:
           fi
           
           # Use branch name for   database naming (QUICKSTART_prod or QUICKSTART_dev)
-          DB_NAME="QUICKSTART__${environment}"
+          DB_NAME="QUICKSTART_${environment}"
           
           echo "Deploying to environment: ${environment}"
           echo "Database name: ${DB_NAME}"
