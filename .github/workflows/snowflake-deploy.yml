@@ -82,9 +82,9 @@ jobs:
               
               # Execute the SQL file. If the command fails, the `else` block will run.
               # This prevents the entire workflow from stopping on a single error.
-              snow sql -q "USE DATABASE ${SNOWFLAKE_DATABASE};" 
+              # snow sql -q "USE DATABASE ${SNOWFLAKE_DATABASE};" 
 
-              if snow sql -f "$file"  > output.log 2>&1; then
+              if snow sql -q "USE DATABASE ${SNOWFLAKE_DATABASE};" -f "$file"  > output.log 2>&1; then
                 # This block runs on SUCCESS.
                 STATUS="SUCCESS"
                 ERROR_MSG=""
