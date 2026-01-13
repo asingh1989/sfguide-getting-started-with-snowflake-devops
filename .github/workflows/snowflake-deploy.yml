@@ -15,13 +15,14 @@ jobs:
     if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     env:
-      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-      SNOWFLAKE_USERNAME: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_CONNECTION: default
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
       SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
       SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"      
       SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE_DEV }}
       SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE_DEV }}
-      SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_DEV }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_DEV }}
 
     steps:
       - name: Checkout Full Git History
@@ -82,7 +83,7 @@ jobs:
               
               # Execute the SQL file. If the command fails, the `else` block will run.
               # This prevents the entire workflow from stopping on a single error.
-              snow sql -q "USE DATABASE ${SNOWFLAKE_DATABASE};" 
+              
 
               if snow sql -f "$file"  > output.log 2>&1; then
                 # This block runs on SUCCESS.
@@ -127,13 +128,14 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-      SNOWFLAKE_USERNAME: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_CONNECTION: default
+      SNOWFLAKE_CONNECTIONS_DEFAULT_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_USER: ${{ secrets.SNOWFLAKE_USER }}
       SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
       SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"	  
       SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE_PROD }}
       SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE_PROD }}
-      SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_PROD }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_PROD }}
 
     steps:
       - name: Checkout Full Git History
@@ -156,9 +158,9 @@ jobs:
           BEGIN { FS="/" }
           {
             if ($3 == "tables")            {p=1}
-            else if ($2 == "views")       {p=2}
-            else if ($2 == "functions")   {p=3}
-            else if ($2 == "stored_procedures") {p=4}
+            else if ($3 == "views")       {p=2}
+            else if ($3 == "functions")   {p=3}
+            else if ($3 == "stored_procedures") {p=4}
             else                          {p=5}
             print p, $0
           }'
@@ -189,26 +191,26 @@ jobs:
           while IFS= read -r file; do
             if [ -n "$file" ]; then
               echo "Executing $file..."
-              snow sql -q "USE DATABASE ${SNOWFLAKE_DATABASE};" 
+              
               
               # Execute the SQL file. If the command fails, the `else` block will run.
               # This prevents the entire workflow from stopping on a single error.
-              if snow sql -f "$file" > output.log 2>&1; then
+              if snow sql -f "$FILE" > output.log 2>&1; then
                 # This block runs on SUCCESS.
                 STATUS="SUCCESS"
                 ERROR_MSG=""
-                echo "Successfully executed $file"
+                echo "Successfully executed $FILE"
               else
                 # This block runs on FAILURE.
                 STATUS="FAILED"
                 # Capture the error message from the output file.
                 ERROR_MSG=$(cat output.log | sed "s/'/''/g")
-                echo "Execution of $file failed with error: $ERROR_MSG"
+                echo "Execution of $FILE failed with error: $ERROR_MSG"
                 # Mark the entire job as failed.
                 OVERALL_STATUS=1
               fi 
               # Construct and run a SQL query to log the outcome (SUCCESS or FAILED) to the history table.
-              LOG_QUERY="INSERT INTO QUICKSTART_COMMON.PUBLIC.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$file', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
+              LOG_QUERY="INSERT INTO QUICKSTART_COMMON.PUBLIC.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$FILE', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
               snow sql -q "$LOG_QUERY" 
               echo "Logged deployment for $FILE with status: $STATUS"              
             fi
