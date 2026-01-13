@@ -156,9 +156,9 @@ jobs:
           BEGIN { FS="/" }
           {
             if ($3 == "tables")            {p=1}
-            else if ($3 == "views")       {p=2}
-            else if ($3 == "functions")   {p=3}
-            else if ($3 == "stored_procedures") {p=4}
+            else if ($2 == "views")       {p=2}
+            else if ($2 == "functions")   {p=3}
+            else if ($2 == "stored_procedures") {p=4}
             else                          {p=5}
             print p, $0
           }'
@@ -208,7 +208,7 @@ jobs:
                 OVERALL_STATUS=1
               fi 
               # Construct and run a SQL query to log the outcome (SUCCESS or FAILED) to the history table.
-              LOG_QUERY="INSERT INTO CICD_DEMO_DB.TECH.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$file', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
+              LOG_QUERY="INSERT INTO QUICKSTART_COMMON.PUBLIC.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$file', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
               snow sql -q "$LOG_QUERY" 
               echo "Logged deployment for $FILE with status: $STATUS"              
             fi
