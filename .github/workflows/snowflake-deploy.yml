@@ -1,0 +1,225 @@
+name: Deploy Snowflake Objects (Fully Ordered & Optimized)
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  workflow_dispatch:
+
+jobs:
+  # ===================================================================================
+  #  JOB TO DEPLOY TO THE 'DEV' ENVIRONMENT
+  # ===================================================================================
+  deploy-to-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    env:
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_USERNAME: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"      
+      SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE_DEV }}
+      SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE_DEV }}
+      SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_DEV }}
+
+    steps:
+      - name: Checkout Full Git History
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Install Snowflake CLI so `snow` is available on PATH
+      - name: Install snowflake-cli
+        uses: Snowflake-Labs/snowflake-cli-action@v1.5
+        with:
+          cli-version: "latest"
+          default-config-file-path: ".snowflake/config.toml" 
+
+      - name: Get Changed and Sorted SQL Files for Dev
+        id: changed-files
+        run: |
+          # Reusable awk command to assign priority based on folder path
+          SORT_LOGIC='
+          BEGIN { FS="/" }
+          {
+            if ($2 == "tables")            {p=1}
+            else if ($2 == "views")       {p=2}
+            else if ($2 == "functions")   {p=3}
+            else if ($2 == "stored_procedures") {p=4}
+            else                          {p=5}
+            print p, $0
+          }'
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
+            echo "Initial push or manual trigger. Finding all SQL files."
+            # Find all files and pipe them through the sorting logic
+            FILES=$(find ddl -name "*.sql" | awk "$SORT_LOGIC" | sort -n | cut -d' ' -f2-)
+          else
+            echo "Incremental push. Finding changed SQL files."
+            # Find changed files and pipe them through the SAME sorting logic
+            FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^ddl/.*\.sql$' | awk "$SORT_LOGIC" | sort -n | cut -d' ' -f2- || true)
+          fi
+          
+          echo "files_to_deploy<<EOF" >> $GITHUB_OUTPUT
+          echo "${FILES}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          echo "--- Files to Deploy to Dev (in order) ---"
+          echo "${FILES}"
+          echo "-----------------------------------------"
+          
+          # This variable will track if any script fails during the loop.
+          OVERALL_STATUS=0
+
+      - name: Deploy Changed Files to Dev
+        if: steps.changed-files.outputs.files_to_deploy != ''
+        run: |
+          echo "Deploying to ${SNOWFLAKE_DATABASE}..."
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              echo "Executing $file..."
+              
+              # Execute the SQL file. If the command fails, the `else` block will run.
+              # This prevents the entire workflow from stopping on a single error.
+              snow sql -q "USE DATABASE ${SNOWFLAKE_DATABASE};" 
+
+              if snow sql -f "$file"  > output.log 2>&1; then
+                # This block runs on SUCCESS.
+                STATUS="SUCCESS"
+                ERROR_MSG=""
+                echo "Successfully executed $FILE"
+              else
+                # This block runs on FAILURE.
+                STATUS="FAILED"
+                # Capture the error message from the output file.
+                ERROR_MSG=$(cat output.log | sed "s/'/''/g")
+                echo "Execution of $FILE failed with error: $ERROR_MSG"
+                # Mark the entire job as failed.
+                OVERALL_STATUS=1
+              fi
+
+              # Construct and run a SQL query to log the outcome (SUCCESS or FAILED) to the history table.
+              LOG_QUERY="INSERT INTO QUICKSTART_COMMON.PUBLIC.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$FILE', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
+              snow sql -q "$LOG_QUERY" 
+              echo "Logged deployment for $FILE with status: $STATUS"
+              
+              echo "--------------------------------------------------"
+            fi
+          done <<< "${{ steps.changed-files.outputs.files_to_deploy }}"
+          
+          # After the loop, if any file failed (OVERALL_STATUS=1), exit with an error code.
+          # This will mark the entire GitHub Actions job as "Failed".
+          if [ $OVERALL_STATUS -eq 1 ]; then
+            echo "One or more SQL scripts failed. Failing the workflow."
+            exit 1
+          fi
+      
+      - name: No Files to Deploy
+        if: steps.changed-files.outputs.files_to_deploy == ''
+        run: echo "No SQL files changed in the 'ddl' directory. Nothing to deploy."
+
+  # ===================================================================================
+  #  JOB TO DEPLOY TO THE 'PROD' ENVIRONMENT
+  # ===================================================================================
+  deploy-to-prod:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+      SNOWFLAKE_USERNAME: ${{ secrets.SNOWFLAKE_USER }}
+      SNOWFLAKE_CONNECTIONS_DEFAULT_AUTHENTICATOR: "SNOWFLAKE_JWT"
+      SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"	  
+      SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE_PROD }}
+      SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE_PROD }}
+      SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_PROD }}
+
+    steps:
+      - name: Checkout Full Git History
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Install Snowflake CLI so `snow` is available on PATH
+      - name: Install snowflake-cli
+        uses: Snowflake-Labs/snowflake-cli-action@v1.5
+        with:
+          cli-version: "latest"
+          default-config-file-path: ".snowflake/config.toml" 
+
+      - name: Get Changed and Sorted SQL Files for Prod
+        id: changed-files
+        run: |
+          # Reusable awk command to assign priority based on folder path
+          SORT_LOGIC='
+          BEGIN { FS="/" }
+          {
+            if ($3 == "tables")            {p=1}
+            else if ($3 == "views")       {p=2}
+            else if ($3 == "functions")   {p=3}
+            else if ($3 == "stored_procedures") {p=4}
+            else                          {p=5}
+            print p, $0
+          }'
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" || "${{ github.event.before }}" == "0000000000000000000000000000000000000000" ]]; then
+            echo "Initial push or manual trigger. Finding all SQL files."
+            FILES=$(find ddl -name "*.sql" | awk "$SORT_LOGIC" | sort -n | cut -d' ' -f2-)
+          else
+            echo "Incremental push. Finding changed SQL files."
+            FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^ddl/.*\.sql$' | awk "$SORT_LOGIC" | sort -n | cut -d' ' -f2- || true)
+          fi
+          
+          echo "files_to_deploy<<EOF" >> $GITHUB_OUTPUT
+          echo "${FILES}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          echo "--- Files to Deploy to Prod (in order) ---"
+          echo "${FILES}"
+          echo "------------------------------------------"
+          
+          # This variable will track if any script fails during the loop.
+          OVERALL_STATUS=0  
+
+      - name: Deploy Changed Files to Prod
+        if: steps.changed-files.outputs.files_to_deploy != ''
+        run: |
+          echo "Deploying to ${SNOWFLAKE_DATABASE}..."
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              echo "Executing $file..."
+              snow sql -q "USE DATABASE ${SNOWFLAKE_DATABASE};" 
+              
+              # Execute the SQL file. If the command fails, the `else` block will run.
+              # This prevents the entire workflow from stopping on a single error.
+              if snow sql -f "$FILE" > output.log 2>&1; then
+                # This block runs on SUCCESS.
+                STATUS="SUCCESS"
+                ERROR_MSG=""
+                echo "Successfully executed $FILE"
+              else
+                # This block runs on FAILURE.
+                STATUS="FAILED"
+                # Capture the error message from the output file.
+                ERROR_MSG=$(cat output.log | sed "s/'/''/g")
+                echo "Execution of $FILE failed with error: $ERROR_MSG"
+                # Mark the entire job as failed.
+                OVERALL_STATUS=1
+              fi 
+              # Construct and run a SQL query to log the outcome (SUCCESS or FAILED) to the history table.
+              LOG_QUERY="INSERT INTO CICD_DEMO_DB.TECH.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$FILE', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
+              snow sql -q "$LOG_QUERY" 
+              echo "Logged deployment for $FILE with status: $STATUS"              
+            fi
+          done <<< "${{ steps.changed-files.outputs.files_to_deploy }}"
+          
+          # After the loop, if any file failed (OVERALL_STATUS=1), exit with an error code.
+          # This will mark the entire GitHub Actions job as "Failed".
+          if [ $OVERALL_STATUS -eq 1 ]; then
+            echo "One or more SQL scripts failed. Failing the workflow."
+            exit 1
+          fi
+      - name: No Files to Deploy
+        if: steps.changed-files.outputs.files_to_deploy == ''
+        run: echo "No SQL files changed in the 'ddl' directory. Nothing to deploy."
