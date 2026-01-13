@@ -100,7 +100,7 @@ jobs:
               fi
 
               # Construct and run a SQL query to log the outcome (SUCCESS or FAILED) to the history table.
-              LOG_QUERY="INSERT INTO QUICKSTART_COMMON.PUBLIC.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$FILE', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
+              LOG_QUERY="INSERT INTO QUICKSTART_COMMON.PUBLIC.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$file', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
               snow sql -q "$LOG_QUERY" 
               echo "Logged deployment for $FILE with status: $STATUS"
               
@@ -193,22 +193,22 @@ jobs:
               
               # Execute the SQL file. If the command fails, the `else` block will run.
               # This prevents the entire workflow from stopping on a single error.
-              if snow sql -f "$FILE" > output.log 2>&1; then
+              if snow sql -f "$file" > output.log 2>&1; then
                 # This block runs on SUCCESS.
                 STATUS="SUCCESS"
                 ERROR_MSG=""
-                echo "Successfully executed $FILE"
+                echo "Successfully executed $file"
               else
                 # This block runs on FAILURE.
                 STATUS="FAILED"
                 # Capture the error message from the output file.
                 ERROR_MSG=$(cat output.log | sed "s/'/''/g")
-                echo "Execution of $FILE failed with error: $ERROR_MSG"
+                echo "Execution of $file failed with error: $ERROR_MSG"
                 # Mark the entire job as failed.
                 OVERALL_STATUS=1
               fi 
               # Construct and run a SQL query to log the outcome (SUCCESS or FAILED) to the history table.
-              LOG_QUERY="INSERT INTO CICD_DEMO_DB.TECH.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$FILE', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
+              LOG_QUERY="INSERT INTO CICD_DEMO_DB.TECH.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$file', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
               snow sql -q "$LOG_QUERY" 
               echo "Logged deployment for $FILE with status: $STATUS"              
             fi
