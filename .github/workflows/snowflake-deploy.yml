@@ -23,7 +23,7 @@ jobs:
       SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE_DEV }}
       SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE_DEV }}
       SNOWFLAKE_CONNECTIONS_DEFAULT_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_DEV }}
-
+      SNOWFLAKE_CONNECTIONS_DEFAULT_PRIVATE_KEY_FILE: ".snowflake/rsa_key.pem"
     steps:
       - name: Checkout Full Git History
         uses: actions/checkout@v4
@@ -83,7 +83,7 @@ jobs:
               
               # Execute the SQL file. If the command fails, the `else` block will run.
               # This prevents the entire workflow from stopping on a single error.
-              snow sql -q "USE DATABASE ${SNOWFLAKE_DATABASE};" 
+              # snow sql -q "USE DATABASE ${SNOWFLAKE_DATABASE};" 
 
               if snow sql -f "$file"  > output.log 2>&1; then
                 # This block runs on SUCCESS.
