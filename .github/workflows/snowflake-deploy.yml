@@ -100,7 +100,7 @@ jobs:
               fi
 
               # Construct and run a SQL query to log the outcome (SUCCESS or FAILED) to the history table.
-              LOG_QUERY="INSERT INTO QUICKSTART_COMMON.PUBLIC.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$FILE', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
+              LOG_QUERY="INSERT INTO QUICKSTART_COMMON.PUBLIC.DEPLOYMENT_HISTORY (FILENAME, COMMIT_SHA, GITHUB_ACTOR, STATUS, ERROR_MESSAGE) VALUES ('$file', '${{ github.sha }}', '${{ github.actor }}', '$STATUS', '$ERROR_MSG');"
               snow sql -q "$LOG_QUERY" 
               echo "Logged deployment for $FILE with status: $STATUS"
               
