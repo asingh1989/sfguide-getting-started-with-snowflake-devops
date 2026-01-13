@@ -42,10 +42,10 @@ jobs:
           SORT_LOGIC='
           BEGIN { FS="/" }
           {
-            if ($3 == "tables")            {p=1}
-            else if ($3 == "views")       {p=2}
-            else if ($3 == "functions")   {p=3}
-            else if ($3 == "stored_procedures") {p=4}
+            if ($2 == "tables")            {p=1}
+            else if ($2 == "views")       {p=2}
+            else if ($2 == "functions")   {p=3}
+            else if ($2 == "stored_procedures") {p=4}
             else                          {p=5}
             print p, $0
           }'
